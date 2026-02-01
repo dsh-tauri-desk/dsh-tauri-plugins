@@ -2,6 +2,7 @@
   "name": "pkg-placeholder",
   "type": "module",
   "version": "0.0.0",
+  "private": true,
   "packageManager": "pnpm@10.25.0",
   "description": "_description_",
   "author": "Hairyf <wwu710632@gmail.com>",
@@ -13,32 +14,21 @@
   },
   "bugs": "https://github.com/hairyf/pkg-placeholder/issues",
   "keywords": [],
-  "sideEffects": false,
-  "exports": {
-    ".": "./dist/index.mjs",
-    "./package.json": "./package.json"
-  },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
-    "lint": "eslint",
-    "prepublishOnly": "nr build",
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r run dev",
+    "lint": "eslint .",
     "release": "bumpp",
-    "start": "tsx src/index.ts",
     "test": "vitest",
-    "typecheck": "tsc",
+    "typecheck": "pnpm -r run typecheck",
     "prepare": "simple-git-hooks"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:cli",
     "@antfu/ni": "catalog:cli",
     "@antfu/utils": "catalog:inlined",
+    "@pkg-placeholder/core": "workspace:*",
+    "@pkg-placeholder/utils": "workspace:*",
     "@types/node": "catalog:types",
     "bumpp": "catalog:cli",
     "eslint": "catalog:cli",
