@@ -19,7 +19,9 @@
 ## 开发
 
 ```bash
+
 pnpm install
+pnpm dev
 pnpm build
 pnpm test
 pnpm typecheck
