@@ -1,8 +1,5 @@
 # dsh-tauri-plugins
 
-[![npm version][npm-version-src]][npm-version-href]
-[![license][license-src]][license-href]
-
 为 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 提供 Tauri 桌面端能力的插件工作区。插件遵循 DSH 的 **host half / client half** 模型：宿主侧负责工具、路由和系统上下文，客户端负责 iframe 内的 UI 与消息桥接。
 
 ![dsh-tauri 插件工作区](public/[placeholder])
@@ -18,30 +15,6 @@
 | [`dsh-tauri-panel-placeholder`](./packages/dsh-tauri-panel-placeholder) | 面板占位实现，用于预留集成入口 | `0.0.0` |
 
 `dsh-tauri-tsdown` 是工作区内部使用的 tsdown 配置包，不作为运行时插件发布。
-
-## 安装
-
-在 DSH 项目中安装需要的插件：
-
-```bash
-pnpm add dsh-tauri dsh-tauri-ui dsh-tauri-worktree
-```
-
-然后在 DSH 配置中启用插件（具体配置格式以 DSH 当前版本为准）：
-
-```ts
-import { defineConfig } from '@deepseek-ai/dsh'
-
-export default defineConfig({
-  plugins: [
-    'dsh-tauri',
-    'dsh-tauri-ui',
-    'dsh-tauri-worktree',
-  ],
-})
-```
-
-插件的客户端部分由包的 `dsh.client.inject` 元数据自动注入。若只需要其中一项能力，也可以只安装对应的包。
 
 ## 能力概览
 
@@ -85,10 +58,3 @@ pnpm --filter dsh-tauri-worktree test
 ## 许可证
 
 [MIT](./LICENSE.md) © [Hairyf](https://github.com/hairyf)
-
-<!-- Badges -->
-
-[npm-version-src]: https://img.shields.io/npm/v/dsh-tauri?style=flat&colorA=080f12&colorB=1fa669
-[npm-version-href]: https://www.npmjs.com/package/dsh-tauri
-[license-src]: https://img.shields.io/github/license/dsh-tauri-desk/plugins-workspace.svg?style=flat&colorA=080f12&colorB=1fa669
-[license-href]: https://github.com/dsh-tauri-desk/plugins-workspace/blob/main/LICENSE.md

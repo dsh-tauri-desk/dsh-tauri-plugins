@@ -1,8 +1,5 @@
 # dsh-tauri-worktree
 
-[![npm version][npm-version-src]][npm-version-href]
-[![license][license-src]][license-href]
-
 `dsh-tauri-worktree` 为 DSH 会话提供 Git worktree 隔离。每个工作树会话拥有独立目录，Agent 可以安全地修改代码，而不会影响本地主工作区。
 
 ![dsh-tauri-worktree 工作流](public/[placeholder])
@@ -15,18 +12,6 @@
 - 将工作树状态注入系统提示：`is_worktree: true`。
 - 检出时创建或切换本地分支，并带回完整会话历史。
 - 放弃工作树时清理临时分支和 ledger 记录。
-
-## 安装
-
-```bash
-pnpm add dsh-tauri-worktree
-```
-
-```ts
-export default {
-  plugins: ['dsh-tauri-worktree'],
-}
-```
 
 ## 用户流程
 
@@ -65,7 +50,5 @@ export default {
 
 [MIT](../../LICENSE.md) © [Hairyf](https://github.com/hairyf)
 
-[npm-version-src]: https://img.shields.io/npm/v/dsh-tauri-worktree?style=flat&colorA=080f12&colorB=1fa669
-[npm-version-href]: https://www.npmjs.com/package/dsh-tauri-worktree
 [license-src]: https://img.shields.io/github/license/dsh-tauri-desk/plugins-workspace.svg?style=flat&colorA=080f12&colorB=1fa669
 [license-href]: https://github.com/dsh-tauri-desk/plugins-workspace/blob/main/LICENSE.md

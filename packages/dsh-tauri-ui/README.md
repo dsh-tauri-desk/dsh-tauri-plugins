@@ -1,8 +1,5 @@
 # dsh-tauri-ui
 
-[![npm version][npm-version-src]][npm-version-href]
-[![license][license-src]][license-href]
-
 `dsh-tauri-ui` 为 DSH 提供 Tauri 风格的客户端界面扩展。目前包含将设置对话框改造成左侧停靠设置栏的功能。
 
 ![dsh-tauri-ui 设置侧边栏](public/[placeholder])
@@ -15,22 +12,6 @@
 - 提供中英文的返回应用、搜索设置等文案。
 - renderer 缺少 `SlotOutlet` 时自动保留官方设置对话框。
 
-## 安装
-
-```bash
-pnpm add dsh-tauri-ui
-```
-
-把包名加入 DSH 插件配置：
-
-```ts
-export default {
-  plugins: ['dsh-tauri-ui'],
-}
-```
-
-它依赖 DSH 的 `slots`、`layout` 和 `locale` 客户端服务，并通过 `dsh.client.inject` 自动声明依赖。
-
 ## 兼容性
 
 设置侧边栏需要 renderer 提供通用 `SlotOutlet`。在旧版核心或缺少 renderer patch 的环境中，插件会安全降级，不会阻塞官方设置功能。
@@ -39,7 +20,5 @@ export default {
 
 [MIT](../../LICENSE.md) © [Hairyf](https://github.com/hairyf)
 
-[npm-version-src]: https://img.shields.io/npm/v/dsh-tauri-ui?style=flat&colorA=080f12&colorB=1fa669
-[npm-version-href]: https://www.npmjs.com/package/dsh-tauri-ui
 [license-src]: https://img.shields.io/github/license/dsh-tauri-desk/plugins-workspace.svg?style=flat&colorA=080f12&colorB=1fa669
 [license-href]: https://github.com/dsh-tauri-desk/plugins-workspace/blob/main/LICENSE.md
