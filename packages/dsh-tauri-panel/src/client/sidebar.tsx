@@ -3,7 +3,7 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ReactElement } from 'react'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
 import { useEffect, useRef, useState } from 'react'
-import { ChatOutline, FishMark, PanelLeftOutline } from './icons'
+import { ChatOutline, FishMark } from './icons'
 import { NS } from './locale'
 
 /**
@@ -147,18 +147,19 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
               />
             </span>
           )}
-          <PanelLeftOutline size={wide ? 16 : 18} className="dshp-panelIcon" />
         </button>
       </div>
-
+      {/* <div className="dshp-sectionHeader">
+        <span className="dshp-sectionHeaderTitle">工作面板</span>
+      </div> */}
       <div className="dshp-panelArea">
         <button
           type="button"
-          className="dshp-menuItem"
+          className="dshp-menuItem dshp-newSession"
           title={t('session.new.label')}
           onClick={() => startSession()}
         >
-          <span className="dshp-menuItemIcon"><ChatOutline size={16} /></span>
+          <span className="dshp-menuItemIcon"><ChatOutline size={wide ? 14 : 18} /></span>
           <span className="dshp-menuItemLabel">{t('session.new')}</span>
         </button>
         <SlotOutlet slotKey="sidebar.panel.action" ownerProps={{ wide }} />

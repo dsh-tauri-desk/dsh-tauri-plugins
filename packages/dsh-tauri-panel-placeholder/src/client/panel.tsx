@@ -35,7 +35,7 @@ function PlaceholderPanel(props: PlaceholderPanelProps): ReactElement {
   }
 
   return (
-    <ActionItem id="placeholder" icon={<IconPlaceholder size={16} />}onClick={onClick}>
+    <ActionItem id="placeholder" icon={<IconPlaceholder />}onClick={onClick}>
       {t('panel.placeholder')}
     </ActionItem>
   )
