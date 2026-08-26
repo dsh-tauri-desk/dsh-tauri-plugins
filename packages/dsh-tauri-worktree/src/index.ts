@@ -29,14 +29,15 @@ import type {
   PendingHandoff,
   PluginConfig,
   WorktreeParams,
-} from './host/types.js'
+} from './types.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import process from 'node:process'
-import { git, gitToplevel, headSubject, projectDirname, shortHead } from './host/git.js'
-import { routeHandler } from './host/http.js'
+import { WORKTREE_API_PREFIX, WORKTREE_BRANCH_NAME_PATTERN, WORKTREE_SECTION_ORDER } from './constants.js'
+import { git, gitToplevel, headSubject, projectDirname, shortHead } from './git.js'
+import { routeHandler } from './http.js'
 import {
   clearPendingCheckoutContext,
   loadCheckoutContextsSync,
@@ -44,7 +45,7 @@ import {
   loadLedgerSync,
   saveLedger,
   setPendingCheckoutContext,
-} from './host/storage.js'
+} from './storage.js'
 
 /** 插件名（诊断元数据，与导出的 name 一致）。 */
 export const name = 'dsh-tauri-worktree'
@@ -60,14 +61,10 @@ export const name = 'dsh-tauri-worktree'
 export const inject = ['tools', 'systemPrompt', 'webServer', 'sessions', 'workspaceRegistry', 'agents']
 
 /** API 路由前缀（客户端同源 fetch）。 */
-export const API_PREFIX = '/api/dsh-worktree'
-
-/** 系统提示注入分段顺序（工具提示 100 段之后，避免与 bash 等冲突）。 */
-const SECTION_ORDER = 210
+export const API_PREFIX = WORKTREE_API_PREFIX
 
 /** 分支名校验（本地分支 dsh/<slug>）。 */
-// eslint-disable-next-line regexp/prefer-w, regexp/use-ignore-case -- 保持既有语义（\w 会额外放行下划线 _）
-const BRANCH_NAME_RE = /^[A-Za-z0-9._/-]+$/
+const BRANCH_NAME_RE = WORKTREE_BRANCH_NAME_PATTERN
 
 /** 计算 hash：项目路径 + 会话 ID → sha256 前 12 位。 */
 export function computeHash(projectPath: string, sessionId: string): string {
@@ -284,18 +281,13 @@ export async function checkoutToLocal(
   if (!worktreeHead.ok)
     return { ok: false, error: `读取工作树 HEAD 失败：${worktreeHead.error}` }
 
-  // 2) 本地仓库创建/定位该分支（若已存在则直接指向工作树 HEAD，防止落后）。
+  // 2) 只创建新分支，不静默覆盖用户已有的分支指针。
   const exists = (await git(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], root, { signal: opts.signal })).ok
-  if (exists) {
-    const reset = await git(['update-ref', `refs/heads/${branch}`, worktreeHead.out], root, { signal: opts.signal })
-    if (!reset.ok)
-      return { ok: false, error: `更新本地分支失败：${reset.error}` }
-  }
-  else {
-    const created = await git(['branch', branch, worktreeHead.out], root, { signal: opts.signal })
-    if (!created.ok)
-      return { ok: false, error: `创建本地分支失败：${created.error}` }
-  }
+  if (exists)
+    return { ok: false, error: `本地分支已存在，为避免覆盖其提交而拒绝检出：${branch}` }
+  const created = await git(['branch', branch, worktreeHead.out], root, { signal: opts.signal })
+  if (!created.ok)
+    return { ok: false, error: `创建本地分支失败：${created.error}` }
 
   // 3) 本地仓库切到该分支。
   const check = await git(['checkout', branch], root, { signal: opts.signal })
@@ -312,8 +304,9 @@ export async function checkoutToLocal(
   // 4) 注销旧版本可能创建的普通 Workspace 记录，再移除工作树。
   await unregisterWorktreeWorkspace(ctx, binding.worktreePath)
   const removed = await git(['worktree', 'remove', '--force', binding.worktreePath], root, { signal: opts.signal })
-  if (removed.ok)
-    await git(['worktree', 'prune'], root)
+  if (!removed.ok)
+    return { ok: false, error: `删除工作树失败，绑定已保留以便重试：${removed.error}` }
+  await git(['worktree', 'prune'], root, { signal: opts.signal })
 
   // 5) 解除绑定。
   const ledger = await loadLedger(worktreesRoot)
@@ -446,10 +439,9 @@ export async function discardWorktree(
   await unregisterWorktreeWorkspace(ctx, binding.worktreePath)
   if (existsSync(binding.worktreePath)) {
     const removed = await git(['worktree', 'remove', '--force', binding.worktreePath], binding.projectPath, { signal: opts.signal })
-    if (!removed.ok) {
-      // 目录可能被手动改动；用 prune 兜底，目录删除留给 git。
-      await git(['worktree', 'prune'], binding.projectPath)
-    }
+    if (!removed.ok)
+      return { ok: false, error: `删除工作树失败，绑定已保留以便重试：${removed.error}` }
+    await git(['worktree', 'prune'], binding.projectPath, { signal: opts.signal })
   }
   // create_worktree(branch_name) 新建的 dsh/* 分支属于临时工作树；放弃时一并删除。
   // UI detached 流程和旧 ledger 没有 ownsBranch，不碰其任何本地分支。
@@ -819,7 +811,7 @@ export function apply(ctx: HostContext, config: PluginConfig = {}): void {
   // 主动 followup 启动额外 turn。目标会话的 header.cwd 已绑定 projectPath。
   ctx.systemPrompt.context({
     name: 'plugin:dsh-tauri-worktree:checkout',
-    order: SECTION_ORDER,
+    order: WORKTREE_SECTION_ORDER,
     text: (context: any) => {
       const sessionId = context?.scope?.session?.id
       if (!sessionId)
@@ -842,7 +834,7 @@ export function apply(ctx: HostContext, config: PluginConfig = {}): void {
   // 4) 系统提示注入：处于工作树时会话的上下文标记 is_worktree: true。
   ctx.systemPrompt.section({
     name: 'plugin:dsh-tauri-worktree',
-    order: SECTION_ORDER,
+    order: WORKTREE_SECTION_ORDER,
     // 每次组装按调用作用域重算：scope 是该 Agent 时读其会话的绑定状态。
     text: (context: any) => {
       const session = context?.scope?.session
