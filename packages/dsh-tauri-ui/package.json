@@ -20,13 +20,13 @@
   ],
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./client": "./src/client/index.ts",
+    ".": "./dist/index.js",
+    "./client": "./dist/client.js",
     "./package.json": "./package.json"
   },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "README.md",
     "cordis.patch.yml",
@@ -54,8 +54,8 @@
   },
   "publishConfig": {
     "exports": {
-      ".": "./dist/index.mjs",
-      "./client": "./dist/client/index.mjs",
+      ".": "./dist/index.js",
+      "./client": "./dist/client.js",
       "./package.json": "./package.json"
     }
   }
