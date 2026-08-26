@@ -2,7 +2,6 @@
   "name": "dsh-tauri",
   "type": "module",
   "version": "0.2.0",
-  "packageManager": "pnpm@10.28.2",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/hairyf/dsh-tauri-plugins#readme",

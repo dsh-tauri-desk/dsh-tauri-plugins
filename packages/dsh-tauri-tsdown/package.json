@@ -9,6 +9,9 @@
   "files": [
     "src"
   ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "devDependencies": {
     "tsdown": "catalog:cli",
     "typescript": "catalog:cli"

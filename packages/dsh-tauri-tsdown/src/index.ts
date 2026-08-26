@@ -44,6 +44,7 @@ export function defineDshConfig(options: UserConfig = {}): UserConfig[] {
       // Client bundles are classic scripts consumed by dsh-client-modules.
       // CJS output is required so its exports remain inside the loader factory.
       format: 'cjs',
+      define: { 'process.env.NODE_ENV': JSON.stringify('production') },
       ...clientBundleRegistration(),
       dts: false,
       sourcemap: true,

@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@10.25.0",
-  "description": "_description_",
+  "description": "Tauri desktop plugins for DeepSeek Harness.",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/hairyf/dsh-tauri-plugins#readme",
@@ -44,6 +44,7 @@
     "@types/react": "catalog:types",
     "@types/react-dom": "catalog:types",
     "bumpp": "catalog:cli",
+    "css-render": "catalog:ui",
     "dsh-tauri-tsdown": "workspace:*",
     "eslint": "catalog:cli",
     "lint-staged": "catalog:cli",
@@ -60,8 +61,11 @@
     "vitest-package-exports": "catalog:testing",
     "yaml": "catalog:testing"
   },
+
   "simple-git-hooks": {
-    "pre-commit": "pnpm i --frozen-lockfile --ignore-scripts --offline && npx lint-staged"
+    "pre-commit": "pnpm install --frozen-lockfile --ignore-scripts --offline && pnpm exec lint-staged"
   },
-  "lint-staged": { "*": "eslint --fix" }
+  "lint-staged": {
+    "*": "eslint --fix"
+  }
 }

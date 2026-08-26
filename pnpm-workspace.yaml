@@ -1,11 +1,12 @@
 catalogMode: prefer
-ignoreWorkspaceRootCheck: true
-shellEmulator: true
-trustPolicy: no-downgrade
 
+ignoreWorkspaceRootCheck: true
+
+shellEmulator: true
+
+trustPolicy: no-downgrade
 packages:
   - packages/*
-
 catalogs:
   cli:
     '@antfu/eslint-config': ^7.2.0
@@ -37,6 +38,9 @@ catalogs:
     '@types/node': ^25.0.1
     '@types/react': ~18.3.1
     '@types/react-dom': ~18.3.1
+  ui:
+    css-render: ^0.15.14
+
 onlyBuiltDependencies:
   - esbuild
   - simple-git-hooks
