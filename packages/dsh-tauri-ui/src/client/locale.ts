@@ -10,29 +10,12 @@
  * 组件订阅 rev 重渲染，文案按当前 active locale 从本地字典读取。
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { SettingsUiKey } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { useSyncExternalStore } from 'react'
+import { DICT_EN, DICT_ZH, SETTINGS_UI_NS } from './constants'
 
-/** 本插件文案命名空间。 */
-export const SETTINGS_UI_NS = 'dsh-tauri-ui'
-
-/** zh 字典（键集合的权威）。 */
-const DICT_ZH = {
-  back: '返回应用',
-  search: '搜索设置…',
-  settings: '设置',
-  noResults: '没有匹配的设置项',
-} as const
-
-/** en 字典，与 zh 键集完全一致（locale 运行时强制双语平衡）。 */
-const DICT_EN: Record<keyof typeof DICT_ZH, string> = {
-  back: 'Back to app',
-  search: 'Search settings…',
-  settings: 'Settings',
-  noResults: 'No matching settings',
-}
-
-export type SettingsUiKey = keyof typeof DICT_ZH
+export type { SettingsUiKey } from './types'
 
 /** 活跃语言 id（module 级缓存，apply 时初始化并由订阅推进）。 */
 let activeLocale = 'en'

@@ -1,8 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ReactElement } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
+import type { SidebarRootProps } from './types'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
 import { useEffect, useRef, useState } from 'react'
+import { COLLAPSE_SETTLE_MS, PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, SCROLLBAR_LINGER_MS } from './constants'
 import { ChatOutline, FishMark } from './icons'
 import { NS } from './locale'
 
@@ -25,28 +27,9 @@ import { NS } from './locale'
  * rail-in/fading 动画类、滚动条 linger（quietBars）。
  */
 
-/** COLLAPSE_SETTLE_MS — 折叠动画 settle 延迟（镜像官方）。 */
-const COLLAPSE_SETTLE_MS = 150
-/** SCROLLBAR_LINGER_MS — 指针离开后滚动条淡出延迟（镜像官方）。 */
-const SCROLLBAR_LINGER_MS = 2000
-
 /** 简易 classnames 拼接。 */
 function cx(...parts: Array<string | false | undefined>): string {
   return parts.filter(Boolean).join(' ')
-}
-
-/** sidebar 槽 owner 传入的合成 props 子集。 */
-interface SidebarRootProps {
-  /** 侧栏折叠态（layout 的 sidebarCol 状态）。 */
-  collapsed: boolean
-  /** 侧栏宽度（wide 态生效）。 */
-  width: number
-  /** 开始新会话（inject：ctx.workspaces.startSession）。 */
-  startSession: (workspaceId?: string) => void
-  /** 折叠/展开切换（inject：ctx.layout.toggleSidebar）。 */
-  toggleSidebar: () => void
-  /** 本条目 locale 翻译函数（panel NS）。 */
-  t: (key: string) => string
 }
 
 /** 克隆的 SidebarRoot：紧凑 logoRow + 面板区 + 官方子槽透传。 */
@@ -89,14 +72,15 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
   return (
     <div
       className={cx(
-        'dshp-root',
-        !wide && 'dshp-collapsed',
-        !wide && everWide.current && 'dshp-railIn',
-        collapsed && wide && 'dshp-fading',
-        !pointerInside && 'dshp-quietBars',
+        PANEL_CLASSES.root,
+        !wide && PANEL_CLASSES.collapsed,
+        !wide && everWide.current && PANEL_CLASSES.railIn,
+        collapsed && wide && PANEL_CLASSES.fading,
+        !pointerInside && PANEL_CLASSES.quietBars,
+        wide && PANEL_CLASSES.wide,
       )}
-      data-dshp-panel-sidebar=""
-      style={wide ? { width: collapsed ? lastWideWidth.current : width } : undefined}
+      {...{ [PANEL_DATA_ATTRIBUTES.sidebar]: '' }}
+      style={wide ? { '--dshp-width': `${collapsed ? lastWideWidth.current : width}px` } as CSSProperties : undefined}
       onPointerEnter={() => {
         cancelLinger()
         setPointerInside(true)
@@ -105,27 +89,27 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
         armLinger()
       }}
     >
-      <div className="dshp-logoRow">
+      <div className={PANEL_CLASSES.logoRow}>
         {wide && (
           <button
             type="button"
-            className="dshp-brand"
+            className={PANEL_CLASSES.brand}
             aria-label={t('session.new.label')}
             onClick={() => startSession()}
           >
-            <span className="dshp-brandIdentity" aria-hidden="true">
-              <span className="dshp-brandMark">
+            <span className={PANEL_CLASSES.brandIdentity} aria-hidden="true">
+              <span className={PANEL_CLASSES.brandMark}>
                 <SlotOutlet
                   slotKey="sidebar.brand.mark"
                   ownerProps={{ size: 24 }}
                   opts={{ fallback: <FishMark size={24} /> }}
                 />
               </span>
-              <span className="dshp-brandName">
+              <span className={PANEL_CLASSES.brandName}>
                 <SlotOutlet
                   slotKey="sidebar.brand.name"
                   ownerProps={{}}
-                  opts={{ fallback: <span className="dshp-fallbackBrandName">DSH Local Build</span> }}
+                  opts={{ fallback: <span className={PANEL_CLASSES.fallbackBrandName}>DSH Local Build</span> }}
                 />
               </span>
             </span>
@@ -133,13 +117,13 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
         )}
         <button
           type="button"
-          className="dshp-iconButton dshp-toggle"
+          className={`${PANEL_CLASSES.iconButton} ${PANEL_CLASSES.toggle}`}
           aria-label={collapsed ? t('toggle.open') : t('toggle.collapse')}
           title={collapsed ? t('toggle.open') : t('toggle.collapse')}
           onClick={() => toggleSidebar()}
         >
           {!wide && (
-            <span className="dshp-railMark" aria-hidden="true">
+            <span className={PANEL_CLASSES.railMark} aria-hidden="true">
               <SlotOutlet
                 slotKey="sidebar.brand.mark"
                 ownerProps={{ size: 24 }}
@@ -152,20 +136,20 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
       {/* <div className="dshp-sectionHeader">
         <span className="dshp-sectionHeaderTitle">工作面板</span>
       </div> */}
-      <div className="dshp-panelArea">
+      <div className={PANEL_CLASSES.panelArea}>
         <button
           type="button"
-          className="dshp-menuItem dshp-newSession"
+          className={`${PANEL_CLASSES.menuItem} ${PANEL_CLASSES.newSession}`}
           title={t('session.new.label')}
           onClick={() => startSession()}
         >
-          <span className="dshp-menuItemIcon"><ChatOutline size={wide ? 14 : 18} /></span>
-          <span className="dshp-menuItemLabel">{t('session.new')}</span>
+          <span className={PANEL_CLASSES.menuItemIcon}><ChatOutline size={wide ? 14 : 18} /></span>
+          <span className={PANEL_CLASSES.menuItemLabel}>{t('session.new')}</span>
         </button>
         <SlotOutlet slotKey="sidebar.panel.action" ownerProps={{ wide }} />
       </div>
 
-      <div className="dshp-regionArea">
+      <div className={PANEL_CLASSES.regionArea}>
         <SlotOutlet
           slotKey="sidebar.workspaces"
           ownerProps={{
@@ -178,11 +162,11 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
         />
       </div>
 
-      <div className="dshp-footArea">
-        <div className="dshp-footerActions">
+      <div className={PANEL_CLASSES.footArea}>
+        <div className={PANEL_CLASSES.footerActions}>
           <SlotOutlet slotKey="sidebar.footer.action" ownerProps={{ wide }} />
         </div>
-        <div className="dshp-settingsArea">
+        <div className={PANEL_CLASSES.settingsArea}>
           <SlotOutlet slotKey="sidebar.settings" ownerProps={{ wide }} />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
-import type { WorkspaceSessionOrder } from './session'
+import type { WorkspacesRuntime, WorktreeDialogProps } from './types'
 /**
  * dialog.tsx — 检出本地 / 放弃更改 两个模态框（shell.overlay 条目）。
  *
@@ -15,161 +15,11 @@ import type { WorkspaceSessionOrder } from './session'
  * 下的居中模态（层本身 click-through，条目 opt-in pointer events）。
  */
 import { useEffect } from 'react'
+import { DIALOG_EFFECT, DIALOG_ID, SHELL_OVERLAY_SLOT, WORKTREE_PLUGIN_NAME } from './constants'
 import { text, useLocale } from './locale'
 import { resolveWorkspaceTopInsertion } from './session'
 import { applyCheckout, applyDiscard, patchSession, useWorktreeSession } from './store'
-
-interface WorkspacesRuntime {
-  archiveSession: (sessionId: string) => Promise<void>
-  list: { getSnapshot: () => { items: WorkspaceSessionOrder[] } }
-  insertSessionBefore: (workspaceId: string, sessionId: string, beforeSessionId?: string) => Promise<unknown>
-}
-
-/** 本条目收到的合成 props 子集。 */
-interface WorktreedialogProps {
-  useSessions: <S>(sel: (state: DialogListState) => S) => S
-  sessionsRuntime: {
-    open: (sessionId: string) => void
-    refresh: () => Promise<void>
-    list: { getSnapshot: () => { current?: string, ids: string[] } }
-  }
-  workspacesRuntime: WorkspacesRuntime
-}
-
-/** 会话列表快照局部形状。 */
-interface DialogListState {
-  phase: string
-  current?: string
-  byId: Record<string, unknown>
-}
-
-const modalWrapStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  zIndex: 1000,
-  display: 'grid',
-  placeItems: 'center',
-  background: 'rgba(0,0,0,0.4)',
-}
-
-const cardStyle: React.CSSProperties = {
-  boxSizing: 'border-box',
-  width: 'min(460px, calc(100vw - 48px))',
-  padding: '20px 22px',
-  borderRadius: 16,
-  background: 'var(--dsw-alias-bg-base)',
-  color: 'var(--dsw-alias-label-primary)',
-  boxShadow: '0 24px 64px rgba(0,0,0,0.28)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-}
-
-const titleStyle: React.CSSProperties = {
-  fontSize: 16,
-  fontWeight: 600,
-  lineHeight: '24px',
-  margin: 0,
-}
-
-const bodyStyle: React.CSSProperties = {
-  fontSize: 13,
-  lineHeight: '20px',
-  color: 'var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary))',
-  margin: 0,
-}
-
-const fieldStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-}
-
-const fieldLabelStyle: React.CSSProperties = {
-  fontSize: 12,
-  lineHeight: '18px',
-  color: 'var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary))',
-}
-
-const inputWrapStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 0,
-  border: '1px solid var(--dsw-alias-border-weak, rgba(127,127,127,0.25))',
-  borderRadius: 10,
-  overflow: 'hidden',
-  background: 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,0.06))',
-}
-
-const inputStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  height: 36,
-  padding: '0 10px',
-  border: 'none',
-  background: 'none',
-  color: 'var(--dsw-alias-label-primary)',
-  fontFamily: 'inherit',
-  fontSize: 13,
-  outline: 'none',
-}
-
-const pathRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 12,
-  fontSize: 12,
-  lineHeight: '18px',
-}
-
-const pathKeyStyle: React.CSSProperties = {
-  flex: 'none',
-  color: 'var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary))',
-}
-
-const pathValStyle: React.CSSProperties = {
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  fontFamily: 'monospace',
-}
-
-const footerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: 10,
-  marginTop: 4,
-}
-
-const btnBase: React.CSSProperties = {
-  boxSizing: 'border-box',
-  height: 36,
-  padding: '0 16px',
-  border: 'none',
-  borderRadius: 10,
-  fontFamily: 'inherit',
-  fontSize: 13,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-}
-
-const btnGhost: React.CSSProperties = {
-  ...btnBase,
-  color: 'var(--dsw-alias-label-primary)',
-  background: 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,0.08))',
-}
-
-const btnPrimary: React.CSSProperties = {
-  ...btnBase,
-  color: '#fff',
-  background: 'var(--dsw-alias-bg-accent, #2f6feb)',
-}
-
-const btnDanger: React.CSSProperties = {
-  ...btnBase,
-  color: '#fff',
-  background: '#c0392b',
-}
+import { worktreeStyles } from './styles'
 
 /**
  * 检出本地 / 放弃 弹窗组件（读 store 的 checkoutOpen / abandonOpen 决定渲染哪个）。
@@ -179,7 +29,7 @@ const btnDanger: React.CSSProperties = {
  * @param props.sessionsRuntime - 宿主会话运行时（打开继承会话）。
  * @returns 居中模态（无打开项时返回 null）。
  */
-export function Worktreedialog({ useSessions, workspacesRuntime, sessionsRuntime }: WorktreedialogProps): ReactElement | null {
+export function WorktreeDialog({ useSessions, workspacesRuntime, sessionsRuntime }: WorktreeDialogProps): ReactElement | null {
   useLocale()
   const sessionId = useSessions(state => state.current)
   const state = useWorktreeSession(sessionId)
@@ -203,7 +53,7 @@ export function Worktreedialog({ useSessions, workspacesRuntime, sessionsRuntime
     return null
 
   return (
-    <div style={modalWrapStyle} data-dsh-worktree-dialog="1" onClick={closeAll}>
+    <div className={worktreeStyles.modal} data-dsh-worktree-dialog="1" onClick={closeAll}>
       {checkout && (
         <CheckoutDialog
           sessionId={sessionId}
@@ -310,39 +160,39 @@ function CheckoutDialog(props: {
 
   return (
     <div
-      style={cardStyle}
+      className={worktreeStyles.card}
       role="dialog"
       aria-modal="true"
       aria-label={text('checkoutTitle')}
       onClick={event => event.stopPropagation()}
     >
-      <h2 style={titleStyle}>{text('checkoutTitle')}</h2>
-      <div style={fieldStyle}>
-        <label style={fieldLabelStyle} htmlFor="wt-checkout-branch">{text('checkoutBranchLabel')}</label>
-        <div style={inputWrapStyle}>
+      <h2 className={worktreeStyles.title}>{text('checkoutTitle')}</h2>
+      <div className={worktreeStyles.field}>
+        <label className={worktreeStyles.fieldLabel} htmlFor="wt-checkout-branch">{text('checkoutBranchLabel')}</label>
+        <div className={worktreeStyles.inputWrap}>
           <input
             id="wt-checkout-branch"
-            style={inputStyle}
+            className={worktreeStyles.input}
             value={branchName}
             placeholder="dsh/feature-xyz"
             onChange={event => updateBranch(event.target.value)}
           />
         </div>
       </div>
-      <div style={pathRowStyle}>
-        <span style={pathKeyStyle}>{text('checkoutCurrentPath')}</span>
-        <span style={pathValStyle}>{worktreeKey || '—'}</span>
+      <div className={worktreeStyles.pathRow}>
+        <span className={worktreeStyles.pathKey}>{text('checkoutCurrentPath')}</span>
+        <span className={worktreeStyles.pathValue}>{worktreeKey || '—'}</span>
       </div>
-      <div style={pathRowStyle}>
-        <span style={pathKeyStyle}>{text('checkoutTargetPath')}</span>
-        <span style={pathValStyle}>{projectPath.replaceAll('\\', '/') || '—'}</span>
+      <div className={worktreeStyles.pathRow}>
+        <span className={worktreeStyles.pathKey}>{text('checkoutTargetPath')}</span>
+        <span className={worktreeStyles.pathValue}>{projectPath.replaceAll('\\', '/') || '—'}</span>
       </div>
-      {props.error && <div style={{ fontSize: 12, lineHeight: '18px', color: '#c0392b' }}>{props.error}</div>}
-      <div style={footerStyle}>
-        <button type="button" style={btnGhost} onClick={onCancel}>{text('checkoutCancel')}</button>
+      {props.error && <div className={worktreeStyles.error}>{props.error}</div>}
+      <div className={worktreeStyles.footer}>
+        <button type="button" className={`${worktreeStyles.button} ${worktreeStyles.buttonGhost}`} onClick={onCancel}>{text('checkoutCancel')}</button>
         <button
           type="button"
-          style={{ ...btnPrimary, opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+          className={`${worktreeStyles.button} ${worktreeStyles.buttonPrimary} ${disabled ? worktreeStyles.buttonDisabled : ''}`}
           disabled={disabled}
           onClick={() => void checkout()}
         >
@@ -371,20 +221,20 @@ function AbandonDialog(props: {
   }
   return (
     <div
-      style={cardStyle}
+      className={worktreeStyles.card}
       role="dialog"
       aria-modal="true"
       aria-label={text('abandonTitle')}
       onClick={event => event.stopPropagation()}
     >
-      <h2 style={titleStyle}>{text('abandonTitle')}</h2>
-      <p style={bodyStyle}>{text('abandonBody')}</p>
-      {props.error && <div style={{ fontSize: 12, lineHeight: '18px', color: '#c0392b' }}>{props.error}</div>}
-      <div style={footerStyle}>
-        <button type="button" style={btnGhost} onClick={onCancel}>{text('abandonCancel')}</button>
+      <h2 className={worktreeStyles.title}>{text('abandonTitle')}</h2>
+      <p className={worktreeStyles.body}>{text('abandonBody')}</p>
+      {props.error && <div className={worktreeStyles.error}>{props.error}</div>}
+      <div className={worktreeStyles.footer}>
+        <button type="button" className={`${worktreeStyles.button} ${worktreeStyles.buttonGhost}`} onClick={onCancel}>{text('abandonCancel')}</button>
         <button
           type="button"
-          style={btnDanger}
+          className={`${worktreeStyles.button} ${worktreeStyles.buttonDanger}`}
           onClick={() => void abandon()}
         >
           {text('abandonConfirm')}
@@ -398,21 +248,21 @@ function AbandonDialog(props: {
  * 注册：shell.overlay（list）新增一个条目，渲染检出/放弃弹窗。
  * @param ctx - 客户端根上下文。
  */
-export function registerdialog(ctx: Context): void {
+export function registerDialog(ctx: Context): void {
   ctx.effect(
     () =>
       ctx.slots.register(
         {
-          name: 'shell.overlay',
-          id: 'dsh-tauri-worktree-dialog',
-          registrant: 'dsh-tauri-worktree',
+          name: SHELL_OVERLAY_SLOT,
+          id: DIALOG_ID,
+          registrant: WORKTREE_PLUGIN_NAME,
           inject: () => ({
             workspacesRuntime: ctx.workspaces,
             sessionsRuntime: ctx.sessions,
           }),
         },
-        Worktreedialog,
+        WorktreeDialog,
       ),
-    'dsh-tauri-worktree: dialog',
+    DIALOG_EFFECT,
   )
 }

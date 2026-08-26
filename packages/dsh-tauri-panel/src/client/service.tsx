@@ -1,8 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { ComponentType, ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
+import type { PanelActionItemProps, PanelContentSpec } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { useSyncExternalStore } from 'react'
+import { PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, PANEL_PROTOCOL_SERVICE, PANEL_VIEW_COMPONENT_ID, PANEL_VIEW_SLOT } from './constants'
 import { NS } from './locale'
+
+export type { PanelActionItemProps, PanelContentSpec } from './types'
 
 /**
  * service.tsx — 面板协议宿主服务（协议能力，见 PROTOCOL.md）。
@@ -32,31 +36,6 @@ import { NS } from './locale'
  * 自己 live 后渲染官方条目 = 自递归（无公开 API 渲染被 shadow 条目）。
  */
 
-/** 面板协议服务名（第三方经 ctx.reflect.get 取用）。 */
-export const PANEL_PROTOCOL_SERVICE = 'panel.protocol'
-
-/** 内容区替换规格（renderPanelContent 入参）。 */
-export interface PanelContentSpec {
-  /** 视图唯一标识（同一时刻只存在一个替换；active 态以它匹配 ActionItem）。 */
-  id: string
-  /** 视图组件：宿主渲染时按标准 kit 传入 t（可选，自包含组件可忽略）。 */
-  render: ComponentType<{ t?: (key: string) => string }>
-  /** 视图文案命名空间（可选，默认宿主 'panel'；视图可声明自己的 NS）。 */
-  locale?: string
-}
-
-/** ActionItem 合成 props：id + 图标 + 点击行为 + 文字（子插件只填这些）。 */
-export interface PanelActionItemProps {
-  /** 条目唯一标识（active 态：当前内容区替换 id 与之相等则保持选中样式）。 */
-  id: string
-  /** 条目图标（16px 语义，自绘 SVG 组件实例）。 */
-  icon?: ReactElement
-  /** 点击行为：自定义动作；打开内容区替换典型写法是调 renderPanelContent。 */
-  onClick?: () => void
-  /** 条目文字（wide 态显示；折叠态宿主 CSS 自动隐藏，只留图标钮）。 */
-  children?: ReactNode
-}
-
 /** 当前 conversation 替换的 inject 句柄（undefined = 官方会话区 live）。 */
 let conversationSeat: (() => void) | undefined
 /** 当前替换视图规格。 */
@@ -73,10 +52,10 @@ function ConversationSeat({ t }: { t: (key: string) => string }): ReactElement |
     return null
   const View = spec.render
   return (
-    <div data-dshp-panel-view="" className="dshp-panelView">
+    <div {...{ [PANEL_DATA_ATTRIBUTES.view]: '' }} className={PANEL_CLASSES.panelView}>
       {/* 内容列：对齐官方内容列宽度（max-width var(--dsh-chat-content-width, 748px)），
           子插件零宽度关注，只负责内容自身布局（垂直方向自定）。 */}
-      <div className="dshp-panelViewColumn">
+      <div className={PANEL_CLASSES.panelViewColumn}>
         <View t={t} />
       </div>
     </div>
@@ -93,9 +72,9 @@ function onPointerDownCapture(event: PointerEvent): void {
   if (!conversationSeat)
     return
   const target = event.target as HTMLElement | null
-  if (target?.closest('[data-dshp-panel-sidebar]') === null)
+  if (target?.closest(`[${PANEL_DATA_ATTRIBUTES.sidebar}]`) === null)
     return
-  if (target?.closest('[data-dshp-panel-view]') !== null || target?.closest('[data-dshp-panel-action]') !== null)
+  if (target?.closest(`[${PANEL_DATA_ATTRIBUTES.view}]`) !== null || target?.closest(`[${PANEL_DATA_ATTRIBUTES.action}]`) !== null)
     return
   closeConversation()
 }
@@ -108,11 +87,11 @@ function openConversation(ctx: Context, spec: PanelContentSpec): void {
     closeConversation()
   currentSpec = spec
   panelViewStore.set({ id: spec.id })
-  conversationSeat = ctx.slots.inject('conversation' as never, () =>
+  conversationSeat = ctx.slots.inject(PANEL_VIEW_SLOT as never, () =>
     ctx.slots.register(
       {
-        name: 'conversation',
-        id: 'dsh-tauri-panel-conversation-seat',
+        name: PANEL_VIEW_SLOT,
+        id: PANEL_VIEW_COMPONENT_ID,
         priority: -1,
         locale: spec.locale ?? NS,
       } as never,
@@ -144,12 +123,12 @@ export function PanelActionItem({ id, icon, onClick, children }: PanelActionItem
   return (
     <button
       type="button"
-      className={active ? 'dshp-menuItem dshp-menuItemSelected' : 'dshp-menuItem'}
-      data-dshp-panel-action=""
+      className={active ? `${PANEL_CLASSES.menuItem} ${PANEL_CLASSES.menuItemSelected}` : PANEL_CLASSES.menuItem}
+      {...{ [PANEL_DATA_ATTRIBUTES.action]: '' }}
       onClick={onClick}
     >
-      {icon !== undefined && <span className="dshp-menuItemIcon">{icon}</span>}
-      <span className="dshp-menuItemLabel">{children}</span>
+      {icon !== undefined && <span className={PANEL_CLASSES.menuItemIcon}>{icon}</span>}
+      <span className={PANEL_CLASSES.menuItemLabel}>{children}</span>
     </button>
   )
 }

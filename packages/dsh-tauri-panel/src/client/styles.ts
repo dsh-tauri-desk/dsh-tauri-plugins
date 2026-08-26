@@ -1,83 +1,95 @@
-/**
- * styles.ts — 克隆 SidebarRoot 的样式注入。
- *
- * 整槽替换的收益：外壳 DOM 与样式完全自控，不依赖官方 CSS module 的 hash
- * 类名（hHd-Xa_* 随构建版本漂移）。类名统一 `dshp-` 前缀；数值镜像官方
- * SidebarRoot.module.css（0.1.1-rc.2），并按需求改造：
- *   - logoRow 高度 60px → 32px、底部间距 8px → 4px（①②）；
- *   - 新会话按钮移入面板区、改为 workspace 菜单项行样式（③④，
- *     镜像官方 Rows.module.css 的 .sessionRow：32px / radius 8px / padding 0 8px /
- *     hover var(--dsw-alias-interactive-bg-hover)）。
- * 动画（rail-in 150ms 49px、fade、wide-in）与滚动条 linger（quietBars）保留官方行为。
- * 注入幂等：同 id 的 <style> 只插一次；插件卸载由宿主卸载 bundle，样式留存可接受。
- */
-const STYLE_ID = 'dsh-tauri-panel-styles'
+/** CSS generated as css-render nodes so every declaration remains structured. */
+import { CssRender } from 'css-render'
+import { PANEL_STYLE_ID } from './constants'
 
-const CSS = `
-.dshp-sectionHeader{box-sizing: border-box;height: 36px;color: var(--dsw-alias-label-tertiary);border-radius: 12px;flex: none;align-items: center;gap: 4px;margin-bottom: 4px;padding-left: 8px;display: flex;overflow: hidden;}
-.dshp-sectionHeaderTitle {white-space: nowrap;opacity: 1;visibility: visible;min-width: 0;max-width: 45%;transition: max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear;flex: none;line-height: 20px;overflow: hidden;}
-.dshp-collapsed .dshp-sectionHeaderTitle {opacity: 0;visibility: hidden;max-width: 0;}
+const cssr = CssRender()
+const { c } = cssr
 
-.dshp-root{--dshp-padding:12px;height:100%;padding:6px var(--dshp-padding);box-sizing:border-box;background:var(--dsw-specific-sidebar-fill);color:var(--dsw-alias-label-primary);--dsh-scrollbar-thumb:var(--dsw-alias-scrollbar-bg-l2);--dsh-scrollbar-thumb-hover:var(--dsw-alias-scrollbar-hover-l2);flex-direction:column;font-size:14px;display:flex;--dsh-sidebar-inline-padding: var(--dshp-padding)}
-.dshp-root.dshp-collapsed{padding:18px 10px 6px}
-.dshp-root.dshp-quietBars{--dsh-scrollbar-thumb:transparent;--dsh-scrollbar-thumb-hover:transparent}
-.dshp-fading>*{opacity:0;transition:opacity .15s var(--ds-ease-in-out)}
-.dshp-railIn .dshp-iconButton,.dshp-railIn .dshp-menuItem,.dshp-railIn .dshp-regionArea{animation:dshp-rail-in .15s var(--ds-ease-in-out) backwards}
-.dshp-railIn .dshp-footArea{animation:dshp-rail-fade-in .15s var(--ds-ease-in-out) backwards}
-@keyframes dshp-rail-in{0%{opacity:0;transform:translate(49px)}}
-@keyframes dshp-rail-fade-in{0%{opacity:0}}
-.dshp-logoRow{box-sizing:border-box;flex:none;justify-content:flex-end;align-items:center;gap:8px;height:60px;margin-bottom:4px;padding:4px 0 4px 4px;display:flex;overflow:hidden}
-.dshp-collapsed .dshp-logoRow{justify-content:flex-start;height:60px;margin-bottom:4px;padding:0}
-.dshp-brand{min-width:0;color:inherit;cursor:pointer;background:transparent;border:none;flex:1;align-items:center;padding:0;display:inline-flex;overflow:hidden}
-.dshp-brandIdentity{align-items:center;gap:8px;min-width:0;height:24px;display:inline-flex}
-.dshp-brandMark{flex:none;justify-content:center;align-items:center;display:inline-flex}
-.dshp-brandName{letter-spacing:.04em;align-items:center;gap:6px;min-width:0;height:24px;font-size:18px;font-weight:600;line-height:24px;display:inline-flex}
-.dshp-fallbackBrandName{letter-spacing:0;white-space:nowrap;font-size:17px}
-.dshp-iconButton{cursor:pointer;width:28px;height:28px;color:var(--dsw-alias-label-secondary);background:transparent;border:none;border-radius:50%;flex:none;justify-content:center;align-items:center;padding:0;display:inline-flex}
-.dshp-iconButton:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshp-collapsed .dshp-iconButton{width:36px;height:36px;color:var(--dsw-alias-label-primary)}
-.dshp-railMark{justify-content:center;align-items:center;display:inline-flex}
-.dshp-panelArea{flex:none;flex-direction:column;align-items:stretch;gap:2px;margin:0 0 0;display:flex;}
-.dshp-collapsed .dshp-panelArea{align-items:center;gap:4px}
-.dshp-menuItem{box-sizing:border-box;appearance:none;cursor:pointer;user-select:none;width:100%;min-width:0;height:32px;flex:none;display:flex;align-items:center;gap:0;padding:0 8px;border:0;border-radius:8px;overflow:hidden;background:transparent;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:14px;font-weight:400;line-height:22px;text-align:left;white-space:nowrap;transition:background-color .12s var(--ds-ease-in-out),color .12s var(--ds-ease-in-out); gap: 6px}
-.dshp-menuItem:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshp-menuItem:focus-visible{outline:2px solid var(--dsw-alias-border-focus);outline-offset:-2px}
-.dshp-menuItemSelected,.dshp-menuItemSelected:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshp-newSession{width:100%;height:38px;margin:0 0 4px;padding:8px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-button-elevated-fill);justify-content:center;align-items:center;gap:6px;font-weight:500}
-.dshp-newSession:hover{background:var(--dsw-alias-button-floating-hover)}
-.dshp-menuItemIcon{box-sizing:border-box;flex:none;color:var(--dsw-alias-label-tertiary);justify-content:center;align-items:center;display:inline-flex; font-size:18px;}
-.dshp-menuItemLabel{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 6px 0 0}
-.dshp-collapsed .dshp-menuItem{justify-content:center;align-self:flex-start;width:36px;min-width:36px;height:36px;padding:0;gap:0;border-radius:12px}
-.dshp-collapsed .dshp-menuItemLabel{display:none;}
-.dshp-collapsed .dshp-panelArea{margin-bottom: 20px}
-.dshp-collapsed .dshp-menuItemIcon{font-size: 21px; color: var(--dsw-alias-label-primary);}
-.dshp-collapsed .dshp-newSession{background:transparent;border-color:transparent;justify-content:center;width:36px;height:36px;margin:0 0 0;padding:0;gap:0}
-.dshp-collapsed .dshp-newSession:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.dshp-regionArea{min-height:0;margin-right:calc(-1 * var(--dshp-padding));flex-direction:column;flex:1;padding:0 4px;display:flex;overflow:hidden}
-.dshp-collapsed .dshp-regionArea{margin-left:0;margin-right:0;padding: 0}
-.dshp-footArea{flex-direction:column;flex:none;display:flex}
-.dshp-settingsArea,.dshp-footerActions{flex:none;width:100%;min-width:0}
-.dshp-footerActions{display:flex}
-.dshp-collapsed .dshp-footArea{align-items:center}
-.dshp-collapsed .dshp-settingsArea,.dshp-collapsed .dshp-footerActions{justify-content:center;width:auto;display:flex}
-/* 会话区替换座位（宿主决定宽度约束）：滚动容器 + 内容列。
-   内容列镜像官方会话内容列 .Md3f7G_column（max-width var(--dsh-chat-content-width)、
-   width 100%、margin 0 auto、flex column、gap 16px）；替换后官方
-   ConversationRoot（定义该变量处）不渲染，以 748px（官方默认值）兜底，
-   外层若已有定义则继承生效——子插件零宽度关注。 */
-.dshp-panelView{height:100%;box-sizing:border-box;min-width:0;overflow-y:auto}
-.dshp-panelViewColumn{max-width:var(--dsh-chat-content-width,748px);min-height:100%;width:100%;margin:0 auto;flex-direction:column;gap:16px;display:flex}
-@media (prefers-reduced-motion:reduce){.dshp-fading>*,.dshp-railIn .dshp-iconButton,.dshp-railIn .dshp-menuItem,.dshp-railIn .dshp-footArea,.dshp-railIn .dshp-regionArea{transition:none;animation:none}}
-`
+const panelStyle = c([
+  c('.dshp-sectionHeader', {
+    boxSizing: 'border-box',
+    height: '36px',
+    color: 'var(--dsw-alias-label-tertiary)',
+    borderRadius: '12px',
+    flex: 'none',
+    alignItems: 'center',
+    gap: '4px',
+    marginBottom: '4px',
+    paddingLeft: '8px',
+    display: 'flex',
+    overflow: 'hidden',
+  }),
+  c('.dshp-sectionHeaderTitle', {
+    whiteSpace: 'nowrap',
+    opacity: 1,
+    visibility: 'visible',
+    minWidth: 0,
+    maxWidth: '45%',
+    transition: 'max-width .18s var(--ds-ease-in-out), margin-right .18s var(--ds-ease-in-out), opacity .12s var(--ds-ease-in-out), transform .18s var(--ds-ease-in-out), visibility 0s linear',
+    flex: 'none',
+    lineHeight: '20px',
+    overflow: 'hidden',
+  }),
+  c('.dshp-collapsed .dshp-sectionHeaderTitle', { opacity: 0, visibility: 'hidden', maxWidth: 0 }),
+  c('.dshp-root', {
+    '--dshp-padding': '12px',
+    'height': '100%',
+    'padding': '6px var(--dshp-padding)',
+    'boxSizing': 'border-box',
+    'background': 'var(--dsw-specific-sidebar-fill)',
+    'color': 'var(--dsw-alias-label-primary)',
+    '--dsh-scrollbar-thumb': 'var(--dsw-alias-scrollbar-bg-l2)',
+    '--dsh-scrollbar-thumb-hover': 'var(--dsw-alias-scrollbar-hover-l2)',
+    'flexDirection': 'column',
+    'fontSize': '14px',
+    'display': 'flex',
+    '--dsh-sidebar-inline-padding': 'var(--dshp-padding)',
+  }),
+  c('.dshp-root.dshp-collapsed', { padding: '18px 10px 6px' }),
+  c('.dshp-root.dshp-wide', { width: 'var(--dshp-width)' }),
+  c('.dshp-root.dshp-quietBars', { '--dsh-scrollbar-thumb': 'transparent', '--dsh-scrollbar-thumb-hover': 'transparent' }),
+  c('.dshp-fading>*', { opacity: 0, transition: 'opacity .15s var(--ds-ease-in-out)' }),
+  c('.dshp-logoRow', { boxSizing: 'border-box', flex: 'none', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', height: '60px', marginBottom: '4px', padding: '4px 0 4px 4px', display: 'flex', overflow: 'hidden' }),
+  c('.dshp-collapsed .dshp-logoRow', { justifyContent: 'flex-start', height: '40px', marginBottom: '4px', padding: 0 }),
+  c('.dshp-brand', { minWidth: 0, color: 'inherit', cursor: 'pointer', background: 'transparent', border: 'none', flex: 1, alignItems: 'center', padding: 0, display: 'inline-flex', overflow: 'hidden' }),
+  c('.dshp-brandIdentity', { alignItems: 'center', gap: '8px', minWidth: 0, height: '24px', display: 'inline-flex' }),
+  c('.dshp-brandMark', { flex: 'none', justifyContent: 'center', alignItems: 'center', display: 'inline-flex' }),
+  c('.dshp-brandName', { letterSpacing: '.04em', alignItems: 'center', gap: '6px', minWidth: 0, height: '24px', fontSize: '18px', fontWeight: 600, lineHeight: '24px', display: 'inline-flex' }),
+  c('.dshp-fallbackBrandName', { letterSpacing: 0, whiteSpace: 'nowrap', fontSize: '17px' }),
+  c('.dshp-iconButton', { cursor: 'pointer', width: '28px', height: '28px', color: 'var(--dsw-alias-label-secondary)', background: 'transparent', border: 'none', borderRadius: '50%', flex: 'none', justifyContent: 'center', alignItems: 'center', padding: 0, display: 'inline-flex' }, [c('&:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' })]),
+  c('.dshp-collapsed .dshp-iconButton', { width: '36px', height: '36px', color: 'var(--dsw-alias-label-primary)' }),
+  c('.dshp-railMark', { justifyContent: 'center', alignItems: 'center', display: 'inline-flex' }),
+  c('.dshp-panelArea', { flex: 'none', flexDirection: 'column', alignItems: 'stretch', gap: '2px', margin: 0, display: 'flex', marginRight: 'var(--dsh-session-list-scrollbar-offset)', paddingLeft: '4px', paddingRight: 'calc(var(--dsh-session-list-edge-inset) - var(--dsh-session-list-scrollbar-width) - var(--dsh-session-list-scrollbar-offset))' }),
+  c('.dshp-collapsed .dshp-panelArea', { alignItems: 'center', gap: '4px' }),
+  c('.dshp-menuItem', { boxSizing: 'border-box', appearance: 'none', cursor: 'pointer', userSelect: 'none', width: '100%', minWidth: 0, height: '34px', flex: 'none', display: 'flex', alignItems: 'center', gap: '6px', padding: '0 8px', border: 0, borderRadius: '8px', overflow: 'hidden', background: 'transparent', color: 'var(--dsw-alias-label-primary)', fontFamily: 'inherit', fontSize: '14px', fontWeight: 400, lineHeight: '22px', textAlign: 'left', whiteSpace: 'nowrap', transition: 'background-color .12s var(--ds-ease-in-out), color .12s var(--ds-ease-in-out)' }, [c('&:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' }), c('&:focus-visible', { outline: '2px solid var(--dsw-alias-border-focus)', outlineOffset: '-2px' })]),
+  c('.dshp-menuItemSelected,.dshp-menuItemSelected:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' }),
+  c('.dshp-newSession', { width: '100%', height: '38px', margin: '0 0 4px', padding: '8px 16px', border: '1px solid var(--dsw-alias-border-l2)', borderRadius: '12px', background: 'var(--dsw-alias-button-elevated-fill)', justifyContent: 'center', alignItems: 'center', gap: '6px', fontWeight: 500 }, [c('&:hover', { background: 'var(--dsw-alias-button-floating-hover)' })]),
+  c('.dshp-menuItemIcon', { boxSizing: 'border-box', flex: 'none', color: 'var(--dsw-alias-label-tertiary)', justifyContent: 'center', alignItems: 'center', display: 'inline-flex', fontSize: '18px' }),
+  c('.dshp-menuItemLabel', { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: '0 6px 0 0' }),
+  c('.dshp-collapsed .dshp-menuItem', { justifyContent: 'center', alignSelf: 'flex-start', width: '36px', minWidth: '36px', height: '36px', padding: 0, gap: 0, borderRadius: '12px' }),
+  c('.dshp-collapsed .dshp-menuItemLabel', { display: 'none' }),
+  c('.dshp-collapsed .dshp-panelArea', { marginBottom: '12px', paddingLeft: 0 }),
+  c('.dshp-collapsed .dshp-menuItemIcon', { fontSize: '21px', color: 'var(--dsw-alias-label-primary)' }),
+  c('.dshp-collapsed .dshp-newSession', { borderColor: 'transparent', justifyContent: 'center', width: '36px', height: '36px', margin: 0, padding: 0, gap: 0 }),
+  c('.dshp-regionArea', { minHeight: 0, marginRight: 'calc(-1 * var(--dshp-padding))', flexDirection: 'column', flex: 1, padding: '0 4px', display: 'flex', overflow: 'hidden' }),
+  c('.dshp-collapsed .dshp-regionArea', { marginLeft: 0, marginRight: 0, padding: 0 }),
+  c('.dshp-footArea', { flexDirection: 'column', flex: 'none', display: 'flex' }),
+  c('.dshp-settingsArea,.dshp-footerActions', { flex: 'none', width: '100%', minWidth: 0 }),
+  c('.dshp-footerActions', { display: 'flex' }),
+  c('.dshp-collapsed .dshp-footArea', { alignItems: 'center' }),
+  c('.dshp-collapsed .dshp-settingsArea,.dshp-collapsed .dshp-footerActions', { justifyContent: 'center', width: 'auto', display: 'flex' }),
+  c('.dshp-panelView', { height: '100%', boxSizing: 'border-box', minWidth: 0, overflowY: 'auto' }),
+  c('.dshp-panelViewColumn', { maxWidth: 'var(--dsh-chat-content-width,748px)', minHeight: '100%', width: '100%', margin: '0 auto', flexDirection: 'column', gap: '16px', display: 'flex' }),
+  c('@keyframes dshp-rail-in', [c('from', { opacity: 0, transform: 'translate(49px)' })]),
+  c('@keyframes dshp-rail-fade-in', [c('from', { opacity: 0 })]),
+  c('@media (prefers-reduced-motion: reduce)', [c('.dshp-fading>*', { transition: 'none' }), c('.dshp-railIn .dshp-iconButton,.dshp-railIn .dshp-menuItem,.dshp-railIn .dshp-footArea,.dshp-railIn .dshp-regionArea', { animation: 'none' })]),
+])
 
-/** 注入面板样式（幂等：同 id 只插一次）。 */
-export function installPanelStyles(): void {
+export function mountPanelStyles(): () => void {
   if (typeof document === 'undefined')
-    return
-  if (document.getElementById(STYLE_ID) !== null)
-    return
-  const style = document.createElement('style')
-  style.id = STYLE_ID
-  style.textContent = CSS
-  document.head.append(style)
+    return () => {}
+  if (cssr.find(PANEL_STYLE_ID) !== null)
+    return () => {}
+  panelStyle.mount({ id: PANEL_STYLE_ID, head: true })
+  return () => panelStyle.unmount({ id: PANEL_STYLE_ID })
 }

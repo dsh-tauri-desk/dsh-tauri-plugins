@@ -10,18 +10,11 @@
  * （plugin-errors.json，按插件 id 幂等覆盖并推送新列表），「插件」面板据此
  * 给本插件显示 danger 标记与更新/卸载入口。
  */
+import type { ErrorAction } from './types'
+import { ERROR_SRC, ERROR_TYPE, PLUGIN_ID } from './constants'
 
-/** 上报消息的 source key（宿主校验：`source === 'dsh-plugin-error-bridge'`）。 */
-export const ERROR_SRC = 'dsh-plugin-error-bridge'
-
-/** 上报消息的 type key（宿主校验：`type === 'dsh://plugin-error'`）。 */
-export const ERROR_TYPE = 'dsh://plugin-error'
-
-/** 插件 id（npm 包名）：宿主错误注册表与插件列表的主键。 */
-export const PLUGIN_ID = 'dsh-tauri'
-
-/** 记录动作（与宿主 `PluginError.action` 语义一致）。 */
-export type ErrorAction = 'runtime' | 'install' | 'update' | 'remove'
+export { ERROR_SRC, ERROR_TYPE, PLUGIN_ID } from './constants'
+export type { ErrorAction } from './types'
 
 /**
  * 上报插件运行期错误到宿主。

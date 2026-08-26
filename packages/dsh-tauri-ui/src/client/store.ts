@@ -1,4 +1,11 @@
+import type { SettingsUiState } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { useSyncExternalStore } from 'react'
+import { RAIL_WIDTH_MAX, RAIL_WIDTH_MIN } from './constants'
+
+export { RAIL_WIDTH_DEFAULT } from './constants'
+export type { SettingsUiState } from './types'
+
 /**
  * store.ts — dsh-tauri-ui 设置侧边栏的共享 UI 状态。
  *
@@ -10,35 +17,14 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
  * createSnapshotStore 是 zustand-backed 的 uSES 安全状态源
  * （getSnapshot 在变更间返回同一引用；update 走 immer draft）。
  */
-import { useSyncExternalStore } from 'react'
-
 /**
  * 左栏宽度合约，与官方 sidebar 面板一致：
  * defineStore init sidebar:280，setSidebar clamp clampWidth(px, 264, 420)，关闭即忘
  * （官方“closing a panel forgets its drag width”——不持久化，重开回默认）。
  */
-export const RAIL_WIDTH_MIN = 264
-export const RAIL_WIDTH_MAX = 420
-export const RAIL_WIDTH_DEFAULT = 280
-
 /** 钳制到左栏合约区间（镜像官方 clampWidth 语义）。 */
 export function clampRailWidth(px: number): number {
   return Math.min(RAIL_WIDTH_MAX, Math.max(RAIL_WIDTH_MIN, px))
-}
-
-/** 设置侧边栏 UI 状态。 */
-export interface SettingsUiState {
-  /** 侧边栏是否已打开。 */
-  open: boolean
-  /** 当前激活的设置分区 id（官方 SettingsPanel 的 activeId 同义）。 */
-  activeId: string | undefined
-  /** 左栏搜索词（只过滤设置项列表）。 */
-  query: string
-  /**
-   * 左栏当前宽度（px）。undefined = 未设定，渲染时用 RAIL_WIDTH_DEFAULT，
-   * 并在打开时按官方 sidebar 的实际渲染宽度同步（关闭时复位回 undefined）。
-   */
-  railWidth: number | undefined
 }
 
 /** 全局唯一共享状态源（模块级单例；插件重载时随 bundle 重建，可接受）。 */

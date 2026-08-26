@@ -24,36 +24,23 @@
  * key 与桌面端 `use-iframe-shim.ts` 校验保持一致，宿主持久化后「插件」面板
  * 显示 danger 标记，避免静默失败。
  */
+import type { NavBridgeHandlers, Page } from './types'
+import {
+  CMD_NEXT,
+  CMD_PREV,
+  CMD_TOGGLE,
+  EVENT_PAGE_FIRSTED,
+  EVENT_PAGE_LASTED,
+  EVENT_SIDEBAR_COLLAPSED,
+  SESSION_LABEL_PATTERNS,
+  SRC_BRIDGE,
+  SRC_HOST,
+  TRACK_INTERVAL_MS,
+  TRACK_MAX_TRIES,
+} from './constants'
 import { guard, reportPluginError } from './error'
 
-/** 宿主 → iframe 命令的 source。 */
-const SRC_HOST = 'dsh-desktop'
-
-/** iframe → 宿主事件的 source。 */
-const SRC_BRIDGE = 'dsh-nav-bridge'
-
-/** 宿主命令类型。 */
-const CMD_TOGGLE = 'dsh://sidebar:toggle'
-const CMD_PREV = 'dsh://page:prev'
-const CMD_NEXT = 'dsh://page:next'
-
-/** 宿主命令所需的业务面（由插件体注入 ctx.layout）。 */
-export interface NavBridgeHandlers {
-  toggleSidebar: () => void
-}
-
-/** 会话行菜单按钮的 aria-label 模板（zh/en），用于提取标题与按标题找行。 */
-const SESSION_LABEL_PATTERNS = [
-  /^会话“(.+)”的操作$/,
-  /^Session actions for (.+)$/,
-] as const
-
-declare global {
-  interface Window {
-    /** 插件接管标记：桌面端 NAV_SHIM_JS 检测到后停止收发，避免双重执行。 */
-    __dsh_tauri_bridge__?: boolean
-  }
-}
+export type { NavBridgeHandlers } from './types'
 
 /**
  * 安装导航桥：设置接管标记、挂载命令监听、侧边栏状态观察与会话访问栈跟踪。
@@ -85,15 +72,10 @@ export function setupNavBridge(handlers: NavBridgeHandlers): () => void {
   }
 
   const sidebarObserver = new MutationObserver(guard(() => {
-    post({ type: 'dsh://sidebar:collapsed', collapsed: collapsedOf() })
+    post({ type: EVENT_SIDEBAR_COLLAPSED, collapsed: collapsedOf() })
   }))
 
   // ── 会话访问栈（页面模型，纯内存）────────────────────────────
-  interface Page {
-    key: string | null
-    el: HTMLElement | null
-  }
-
   let pages: Page[] = []
   let position = 0
   let lastKey: string | null = null
@@ -140,8 +122,8 @@ export function setupNavBridge(handlers: NavBridgeHandlers): () => void {
   }
 
   function reportPage(): void {
-    post({ type: 'dsh://page:firsted', firsted: position <= 0 })
-    post({ type: 'dsh://page:lasted', lasted: position >= pages.length - 1 })
+    post({ type: EVENT_PAGE_FIRSTED, firsted: position <= 0 })
+    post({ type: EVENT_PAGE_LASTED, lasted: position >= pages.length - 1 })
   }
 
   // 用户导航到新会话：截断前进记录后追加
@@ -199,7 +181,7 @@ export function setupNavBridge(handlers: NavBridgeHandlers): () => void {
       if (!frame)
         return false
       sidebarObserver.observe(frame, { attributes: true, attributeFilter: ['data-sidebar-collapsed'] })
-      post({ type: 'dsh://sidebar:collapsed', collapsed: collapsedOf() })
+      post({ type: EVENT_SIDEBAR_COLLAPSED, collapsed: collapsedOf() })
 
       const sel = currentSelected()
       const key = rowTitle(sel)
@@ -256,10 +238,10 @@ export function setupNavBridge(handlers: NavBridgeHandlers): () => void {
   if (!startTrack()) {
     let tries = 0
     trackTimer = setInterval(() => {
-      if (startTrack() || ++tries > 30) {
+      if (startTrack() || ++tries > TRACK_MAX_TRIES) {
         clearInterval(trackTimer)
       }
-    }, 500)
+    }, TRACK_INTERVAL_MS)
   }
 
   // ── 卸载 ──────────────────────────────────────────────────────

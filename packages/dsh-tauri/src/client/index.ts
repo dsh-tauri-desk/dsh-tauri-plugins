@@ -16,14 +16,24 @@
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import { CssRender } from 'css-render'
 import { setupNavBridge } from './bridge'
+import {
+  COLLAPSE_SIDEBAR_SELECTOR,
+  NAV_BRIDGE_EFFECT_ID,
+  NEW_SESSION_SELECTOR,
+  PLUGIN_ID,
+  PLUGIN_INJECT,
+  SIDEBAR_TWEAKS_EFFECT_ID,
+  SIDEBAR_TWEAKS_STYLE_ID,
+} from './constants'
 import { reportPluginError } from './error'
 
 /** 插件显示名（诊断元数据）。 */
-export const name = 'dsh-tauri'
+export const name = PLUGIN_ID
 
 /** 需要的客户端服务：layout（侧边栏切换）。 */
-export const inject = ['layout']
+export const inject = PLUGIN_INJECT
 
 /**
  * 插件体：接管导航桥（置位接管标记 → 挂命令监听/状态观察/历史跟踪）。
@@ -41,27 +51,21 @@ export function apply(ctx: ClientContext): void {
     // CSS 选择器天然覆盖 React 后续重渲染，卸载时移除样式。
     let styleCleanup: (() => void) | undefined
     try {
-      const style = document.createElement('style')
-      style.id = 'dsh-tauri:sidebar-tweaks'
-      style.textContent = [
-        'button[aria-label="收起侧边栏"],',
-        'button[aria-label="Collapse sidebar"] {',
-        '  display: none !important;',
-        '}',
-        'button[aria-label="新建会话"],',
-        'button[aria-label="New session"] {',
-        '  justify-content: center !important;',
-        '}',
-      ].join('\n')
-      document.head.appendChild(style)
-      styleCleanup = () => style.remove()
+      const cssr = CssRender()
+      const { c } = cssr
+      const style = c([
+        c(COLLAPSE_SIDEBAR_SELECTOR, { display: 'none !important' }),
+        c(NEW_SESSION_SELECTOR, { justifyContent: 'center !important' }),
+      ])
+      style.mount({ id: SIDEBAR_TWEAKS_STYLE_ID, head: true })
+      styleCleanup = () => style.unmount({ id: SIDEBAR_TWEAKS_STYLE_ID })
     }
     catch (error) {
       // 插件自身代码路径异常：上报宿主，避免静默失败
       reportPluginError(error, 'runtime')
     }
     return () => styleCleanup?.()
-  }, 'dsh-tauri: sidebar tweaks (hide collapse toggle, center brand)')
+  }, SIDEBAR_TWEAKS_EFFECT_ID)
 
   ctx.effect(() => {
     // 导航桥启动：初始化失败也上报（桥内部有各自的 guard/兜底轮询，这里只
@@ -76,5 +80,5 @@ export function apply(ctx: ClientContext): void {
       reportPluginError(error, 'runtime')
     }
     return () => navCleanup?.()
-  }, 'dsh-tauri: nav bridge')
+  }, NAV_BRIDGE_EFFECT_ID)
 }

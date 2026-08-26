@@ -1,15 +1,13 @@
 import type { ReactElement } from 'react'
+import type { IconProps } from './types'
+
+export type { IconProps } from './types'
 
 /**
  * icons.tsx — 自绘内联 SVG 图标（Gravity 风格描边，currentColor）。
  * 不依赖 @deepseek-ai/dsh-client-ui-primitives 的类型/运行时（loader 模块表
  * 虽提供该模块，但自绘零外部表面、跨部署更稳）。
  */
-
-export interface IconProps {
-  size?: number
-  className?: string
-}
 
 /**
  * 新会话：官方 ChatOutline16 同款（聊天气泡 + 加号，fill 风格）。

@@ -14,12 +14,13 @@
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import { PLUGIN_ID } from './constants'
 import { installPanelLocale } from './locale'
 import { installPanel } from './panel'
-import { installPanelStyles } from './styles'
+import { mountPlaceholderStyles } from './styles'
 
 /** 插件显示名（诊断元数据）。 */
-export const name = 'dsh-tauri-panel-placeholder'
+export const name = PLUGIN_ID
 
 /** 需要的客户端服务：slots（注册点位）、locale（双语文案）。 */
 export const inject = ['slots', 'locale']
@@ -29,7 +30,10 @@ export const inject = ['slots', 'locale']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  installPanelStyles()
+  ctx.effect(
+    () => mountPlaceholderStyles(),
+    `${PLUGIN_ID}: styles`,
+  )
   installPanelLocale(ctx)
   installPanel(ctx)
 }

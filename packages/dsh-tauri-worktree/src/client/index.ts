@@ -12,15 +12,22 @@
  * 与 node half（src/index.ts）经 /api/dsh-worktree/* 通信（create/status/checkout/discard）。
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { registerdialog } from './dialog'
+import {
+  HYDRATION_EFFECT,
+  SESSION_ICONS_EFFECT,
+  STYLES_EFFECT,
+  WORKTREE_PLUGIN_NAME,
+} from './constants'
+import { registerDialog } from './dialog'
 import { installWorktreeHydration } from './hydrate'
 import { installLocale } from './locale'
-import { registerModeSelect } from './select'
+import { mountModeSelectStyles, registerModeSelect } from './select'
 import { installSessionIcons } from './session'
-import { registerSurfaceBar } from './surface'
+import { mountWorktreeStyles } from './styles'
+import { registerSurface } from './surface'
 
 /** 插件显示名（诊断元数据）。 */
-export const name = 'dsh-tauri-worktree'
+export const name = WORKTREE_PLUGIN_NAME
 
 /** 需要的客户端服务：slots（注册点位）、layout（面板）、locale（双语）、sessions（会话行匹配）。 */
 export const inject = ['slots', 'layout', 'locale', 'sessions', 'workspaces']
@@ -31,9 +38,20 @@ export const inject = ['slots', 'layout', 'locale', 'sessions', 'workspaces']
  */
 export function apply(ctx: ClientContext): void {
   installLocale(ctx)
+  ctx.effect(
+    () => {
+      const unmountModeSelectStyles = mountModeSelectStyles()
+      const unmountWorktreeStyles = mountWorktreeStyles()
+      return () => {
+        unmountModeSelectStyles()
+        unmountWorktreeStyles()
+      }
+    },
+    STYLES_EFFECT,
+  )
   registerModeSelect(ctx)
-  registerSurfaceBar(ctx)
-  registerdialog(ctx)
-  ctx.effect(() => installWorktreeHydration(ctx), 'dsh-tauri-worktree: hydrate session bindings')
-  ctx.effect(() => installSessionIcons(), 'dsh-tauri-worktree: session branch icons')
+  registerSurface(ctx)
+  registerDialog(ctx)
+  ctx.effect(() => installWorktreeHydration(ctx), HYDRATION_EFFECT)
+  ctx.effect(() => installSessionIcons(), SESSION_ICONS_EFFECT)
 }

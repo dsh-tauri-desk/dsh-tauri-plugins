@@ -7,11 +7,13 @@
  * 组件订阅 rev 重渲染，文案按当前 active locale 从本地字典读取。
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { LocaleKey } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { useSyncExternalStore } from 'react'
+import { WORKTREE_LOCALE_NAMESPACE as NS } from './constants'
 
-/** 本插件文案命名空间。 */
-export const NS = 'dsh-tauri-worktree'
+export { WORKTREE_LOCALE_NAMESPACE as NS } from './constants'
+export type { LocaleKey } from './types'
 
 /** zh 字典（键集合的权威）。 */
 const DICT_ZH = {
@@ -43,10 +45,10 @@ const DICT_ZH = {
   branchPlaceholder: 'dsh/feature-xyz',
   logEmpty: '暂无创建日志',
   sessionWorkingTreeBadge: '工作树',
-} as const
+} as const satisfies Record<LocaleKey, string>
 
 /** en 字典，与 zh 键集完全一致（locale 运行时强制双语平衡）。 */
-const DICT_EN: Record<keyof typeof DICT_ZH, string> = {
+const DICT_EN: Record<LocaleKey, string> = {
   modeLabel: 'Mode',
   modeLocal: 'Local',
   modeWorktree: 'Worktree',
@@ -76,8 +78,6 @@ const DICT_EN: Record<keyof typeof DICT_ZH, string> = {
   logEmpty: 'No creation log yet',
   sessionWorkingTreeBadge: 'Worktree',
 }
-
-export type LocaleKey = keyof typeof DICT_ZH
 
 /** 活跃语言 id（module 级缓存，apply 时初始化并由订阅推进）。 */
 let activeLocale = 'en'

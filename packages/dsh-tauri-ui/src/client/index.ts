@@ -25,14 +25,21 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
+import {
+  SETTINGS_REGISTRANT,
+  SETTINGS_SHELL_OVERLAY_SLOT,
+  SETTINGS_SHELL_SEAT_ID,
+  SETTINGS_UI_PLUGIN,
+} from './constants'
 import { installSettingsLocale } from './locale'
 import { TauriUiSeat } from './seat'
 import { installSettingsSections } from './sections'
 import { registerSettingsSidebar } from './sidebar'
+import { mountSettingsStyles } from './styles'
 import { registerSettingsTrigger } from './trigger'
 
 /** 插件显示名（诊断元数据）。 */
-export const name = 'dsh-tauri-ui'
+export const name = SETTINGS_UI_PLUGIN
 
 /** 需要的客户端服务：slots（注册点位）、layout（未来 chrome 的面板动作）、locale（双语文案）。 */
 export const inject = ['slots', 'layout', 'locale']
@@ -47,9 +54,9 @@ export function apply(ctx: ClientContext): void {
     () =>
       ctx.slots.register(
         {
-          name: 'shell.overlay',
-          id: 'dsh-tauri-ui',
-          registrant: 'dsh-tauri-ui',
+          name: SETTINGS_SHELL_OVERLAY_SLOT,
+          id: SETTINGS_SHELL_SEAT_ID,
+          registrant: SETTINGS_REGISTRANT,
         },
         TauriUiSeat,
       ),
@@ -60,6 +67,10 @@ export function apply(ctx: ClientContext): void {
   // 侧边栏依赖 renderer 补丁导出的 <SlotOutlet>（任意槽渲染的入口）。核心未带
   // 补丁时（旧安装），SlotOutlet 为 undefined —— 此时降级：不注册侧边栏与
   // 触发条目，官方设置 dialog 原样工作，绝不白屏（功能整体不生效即可）。
+  ctx.effect(
+    () => mountSettingsStyles(),
+    'dsh-tauri-ui: settings styles',
+  )
   installSettingsLocale(ctx)
   installSettingsSections(ctx.slots)
   if (typeof SlotOutlet === 'function') {

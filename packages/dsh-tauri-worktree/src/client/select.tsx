@@ -1,6 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
+import type { ModeSelectProps, SessionsRuntime } from './types'
 import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import { CssRender } from 'css-render'
 /**
  * select.tsx — 「标准模式」右侧的会话工作模式选择器。
  *
@@ -9,6 +11,16 @@ import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primi
  */
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  COMPOSER_SEAT_SELECTOR,
+  HERO_PRESET_SLOT_SELECTOR,
+  INPUT_DOCK_SLOT,
+  MODE_ANCHOR_ATTRIBUTE,
+  MODE_SELECT_CLASSES,
+  MODE_SELECT_ID,
+  MODE_SELECT_ORDER,
+  MODE_SELECT_STYLE_ID,
+} from './constants'
 import { CircleTreeIcon } from './icons'
 import { NS, text, useLocale } from './locale'
 import {
@@ -19,66 +31,43 @@ import {
   useWorktreeSession,
 } from './store'
 
-interface InputState {
-  draft: string
-  imageIds: string[]
-}
-
-interface InputActions {
-  setDraft: (text: string) => void
-  addImages: (ids: string[]) => boolean
-  removeImage: (id: string) => void
-  submit: () => void
-}
-
-interface SessionsRuntime {
-  create: (opts: { cwd: string, sessionId: string }) => Promise<string>
-  open: (sessionId: string) => void
-  provideInfo: (sessionId: string) => { props?: { inputActions?: InputActions } } | undefined
-}
-
-interface ModeSelectProps {
-  sessionId: string
-  useInput: <S>(selector: (state: InputState) => S) => S
-  inputActions: InputActions
-  sessionsRuntime: SessionsRuntime
-}
-
-const CHEVRON_CLASS = 'dsh-tauri-worktree-mode-chevron'
-
-function ensureModeSelectStyles(): void {
-  if (document.querySelector('style[data-plugin-css="@deepseek-ai/dsh-tauri-worktree/ModeSelect.module.css"]'))
-    return
-  const style = document.createElement('style')
-  style.dataset.plugin = '@deepseek-ai/dsh-tauri-worktree'
-  style.dataset.pluginCss = '@deepseek-ai/dsh-tauri-worktree/ModeSelect.module.css'
-  style.textContent = `.${CHEVRON_CLASS} { color: var(--dsw-alias-label-caption); flex: none; }`
-  document.head.appendChild(style)
-}
-
-const triggerStyle: React.CSSProperties = {
-  boxSizing: 'border-box',
-  maxWidth: 240,
-  minHeight: 28,
-  padding: '0 8px',
-  border: 'none',
-  borderRadius: 16,
-  background: 'transparent',
-  color: 'var(--dsw-alias-label-primary)',
-  fontFamily: 'var(--dsw-font-family, inherit)',
-  fontSize: 13,
-  fontWeight: 500,
-  lineHeight: '20px',
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  whiteSpace: 'nowrap',
+export function mountModeSelectStyles(): () => void {
+  const cssr = CssRender()
+  if (cssr.find(MODE_SELECT_STYLE_ID) !== null)
+    return () => {}
+  const { c } = cssr
+  const style = c([
+    c(`.${MODE_SELECT_CLASSES.trigger}`, {
+      boxSizing: 'border-box',
+      maxWidth: '240px',
+      minHeight: '28px',
+      padding: '0 8px',
+      border: 'none',
+      borderRadius: '16px',
+      background: 'transparent',
+      color: 'var(--dsw-alias-label-primary)',
+      fontFamily: 'var(--dsw-font-family, inherit)',
+      fontSize: '13px',
+      fontWeight: 500,
+      lineHeight: '20px',
+      cursor: 'pointer',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px',
+      whiteSpace: 'nowrap',
+    }, [c('&:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' })]),
+    c(`.${MODE_SELECT_CLASSES.triggerOpen}`, { background: 'var(--dsw-alias-interactive-bg-hover)' }),
+    c(`.${MODE_SELECT_CLASSES.icon}`, { color: 'var(--dsw-alias-label-primary)', display: 'inline-flex', flex: 'none' }),
+    c(`.${MODE_SELECT_CLASSES.chevron}`, { color: 'var(--dsw-alias-label-caption)', flex: 'none' }),
+    c(`.${MODE_SELECT_CLASSES.host}`, { display: 'inline-flex', alignItems: 'center' }),
+    c(`.${MODE_SELECT_CLASSES.anchor}`, { display: 'none' }),
+  ])
+  style.mount({ id: MODE_SELECT_STYLE_ID, head: true })
+  return () => style.unmount({ id: MODE_SELECT_STYLE_ID })
 }
 
 export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
   const { sessionId } = props
-  ensureModeSelectStyles()
   const anchorRef = useRef<HTMLSpanElement>(null)
   const [portalHost, setPortalHost] = useState<HTMLSpanElement | null>(null)
 
@@ -86,13 +75,13 @@ export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
     const anchor = anchorRef.current
     // HARDCODE: DSH 0.1.1-rc.2 has no slot beside AgentPresetSeat, so this relies
     // on the shell's private composer marker and hero preset slot DOM placement.
-    const composerSeat = anchor?.closest<HTMLElement>('[data-composer-seat]')
+    const composerSeat = anchor?.closest<HTMLElement>(COMPOSER_SEAT_SELECTOR)
     if (!composerSeat)
       return
 
     let host: HTMLSpanElement | null = null
     const place = (): void => {
-      const presetSlot = composerSeat.querySelector<HTMLElement>('[data-slot="conversation.hero.agentPreset"]')
+      const presetSlot = composerSeat.querySelector<HTMLElement>(HERO_PRESET_SLOT_SELECTOR)
       if (!presetSlot) {
         setPortalHost(null)
         host?.remove()
@@ -102,8 +91,7 @@ export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
       if (!host) {
         host = document.createElement('span')
         host.dataset.dshTauriWorktreeMode = sessionId
-        host.style.display = 'inline-flex'
-        host.style.alignItems = 'center'
+        host.className = MODE_SELECT_CLASSES.host
       }
       if (presetSlot.nextElementSibling !== host)
         presetSlot.after(host)
@@ -121,7 +109,7 @@ export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
 
   return (
     <>
-      <span ref={anchorRef} data-dsh-tauri-worktree-mode-anchor={sessionId} style={{ display: 'none' }} />
+      <span ref={anchorRef} className={MODE_SELECT_CLASSES.anchor} {...{ [MODE_ANCHOR_ATTRIBUTE]: sessionId }} />
       {portalHost && createPortal(<WorktreeModeControl {...props} />, portalHost)}
     </>
   )
@@ -140,8 +128,8 @@ function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntim
       return
     // HARDCODE: capture submission from the private composer DOM because the
     // current client API exposes inputActions.submit(), but no pre-submit hook.
-    const root = document.querySelector<HTMLElement>(`[data-dsh-tauri-worktree-mode-anchor="${CSS.escape(sessionId)}"]`)
-    const composerSeat = root?.closest<HTMLElement>('[data-composer-seat]')
+    const root = document.querySelector<HTMLElement>(`[${MODE_ANCHOR_ATTRIBUTE}="${CSS.escape(sessionId)}"]`)
+    const composerSeat = root?.closest<HTMLElement>(COMPOSER_SEAT_SELECTOR)
     if (!composerSeat)
       return
 
@@ -238,22 +226,13 @@ function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntim
       aria-haspopup="menu"
       aria-expanded={open}
       onClick={() => setOpen(value => !value)}
-      style={{
-        ...triggerStyle,
-        background: open ? 'var(--dsw-alias-interactive-bg-hover)' : 'transparent',
-      }}
-      onMouseEnter={(event) => {
-        event.currentTarget.style.background = 'var(--dsw-alias-interactive-bg-hover)'
-      }}
-      onMouseLeave={(event) => {
-        event.currentTarget.style.background = open ? 'var(--dsw-alias-interactive-bg-hover)' : 'transparent'
-      }}
+      className={open ? `${MODE_SELECT_CLASSES.trigger} ${MODE_SELECT_CLASSES.triggerOpen}` : MODE_SELECT_CLASSES.trigger}
     >
-      <span style={{ color: 'var(--dsw-alias-label-primary)', display: 'inline-flex', flex: 'none' }}>
+      <span className={MODE_SELECT_CLASSES.icon}>
         <CircleTreeIcon size={13} />
       </span>
       <span>{activeLabel}</span>
-      <IconChevronDownOutline14 className={CHEVRON_CLASS} />
+      <IconChevronDownOutline14 className={MODE_SELECT_CLASSES.chevron} />
     </button>
   )
 
@@ -291,12 +270,12 @@ function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntim
 
 /** 使用 input.dock 的 session 生命周期，并把控件 portal 到标准模式右侧。 */
 export function registerModeSelect(ctx: Context): void {
-  ctx.slots.inject('conversation.input.dock' as never, () =>
+  ctx.slots.inject(INPUT_DOCK_SLOT as never, () =>
     ctx.slots.register(
       {
-        name: 'conversation.input.dock',
-        id: 'dsh-tauri-worktree-mode',
-        order: -20,
+        name: INPUT_DOCK_SLOT,
+        id: MODE_SELECT_ID,
+        order: MODE_SELECT_ORDER,
         locale: NS,
         inject: (sessionId: string | undefined) => sessionId === undefined
           ? undefined

@@ -10,35 +10,43 @@
  * 注意：行没有 data-session-id 属性，使用 React `SessionNodeItem` Fiber key 读取精确
  * session id（只读，不移动 React 管理的节点），再读 store 判断是否处于工作树模式。
  */
+import type { WorkspaceSessionOrder } from './types'
+import { CssRender } from 'css-render'
+import {
+  SESSION_ICON_ATTRIBUTE,
+  SESSION_ICON_STYLE_ID,
+  SIDEBAR_SELECTOR,
+} from './constants'
 import { circleTreeSvg } from './icons'
 import { worktreeStore } from './store'
 
-/** 图标注入用标记，防止重复。 */
-const ICON_ATTR = 'data-dsh-worktree-icon'
+export type { WorkspaceSessionOrder } from './types'
 
 /**
  * 安装会话行分支图标（CSS + DOM 观察器）。返回卸载函数。
  * @returns 卸载函数。
  */
 export function installSessionIcons(): () => void {
-  // 注入 CSS：图标占位，不影响行高。
-  const style = document.createElement('style')
-  style.dataset.plugin = '@deepseek-ai/dsh-tauri-worktree'
-  style.dataset.pluginCss = '@deepseek-ai/dsh-tauri-worktree/SessionBranchIcon.module.css'
-  style.textContent = [
-    '[data-dsh-worktree-icon] {',
-    '  width: 16px;',
-    '  height: 20px;',
-    '  flex: none;',
-    '  display: inline-flex;',
-    '  align-items: center;',
-    '  justify-content: center;',
-    '  margin-left: 2px;',
-    '  color: var(--dsw-alias-label-secondary);',
-    '}',
-    '[role="treeitem"] { position: relative; }',
-  ].join('\n')
-  document.head.appendChild(style)
+  if (typeof document === 'undefined')
+    return () => {}
+  const cssr = CssRender()
+  if (cssr.find(SESSION_ICON_STYLE_ID) !== null)
+    return () => {}
+  const { c } = cssr
+  const iconStyle = c([
+    c(`[${SESSION_ICON_ATTRIBUTE}]`, {
+      width: '16px',
+      height: '20px',
+      flex: 'none',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: '2px',
+      color: 'var(--dsw-alias-label-secondary)',
+    }),
+    c('[role="treeitem"]', { position: 'relative' }),
+  ])
+  iconStyle.mount({ id: SESSION_ICON_STYLE_ID, head: true })
 
   /**
    * HARDCODE: DSH 0.1.1-rc.2 does not expose a per-session-row slot or data id,
@@ -67,7 +75,7 @@ export function installSessionIcons(): () => void {
   // time, rowActions. Anchor on rowActions instead of locale-dependent text;
   // blank rows have no time, so never fall back to inserting before the title.
   function applyIcon(row: Element): void {
-    if (row.querySelector(`[${ICON_ATTR}]`))
+    if (row.querySelector(`[${SESSION_ICON_ATTRIBUTE}]`))
       return
     const actions = row.lastElementChild
     const time = actions?.previousElementSibling
@@ -75,7 +83,7 @@ export function installSessionIcons(): () => void {
       return
 
     const icon = document.createElement('span')
-    icon.setAttribute(ICON_ATTR, '1')
+    icon.setAttribute(SESSION_ICON_ATTRIBUTE, '1')
     icon.style.marginRight = '5px'
     icon.innerHTML = circleTreeSvg(12)
     row.insertBefore(icon, time)
@@ -86,7 +94,7 @@ export function installSessionIcons(): () => void {
     const rows = sessionRows()
     const states = worktreeStore.getSnapshot().bySession
     for (const [sessionId, row] of rows) {
-      const icon = row.querySelector<HTMLElement>(`[${ICON_ATTR}]`)
+      const icon = row.querySelector<HTMLElement>(`[${SESSION_ICON_ATTRIBUTE}]`)
       if (states[sessionId]?.mode === 'worktree') {
         if (!icon)
           applyIcon(row)
@@ -99,7 +107,7 @@ export function installSessionIcons(): () => void {
 
   const ro = new MutationObserver(scan)
   function attach(): boolean {
-    const target = document.querySelector<HTMLElement>('[data-slot="sidebar"]') ?? document.body
+    const target = document.querySelector<HTMLElement>(SIDEBAR_SELECTOR) ?? document.body
     ro.observe(target, { childList: true, subtree: true })
     scan()
     return true
@@ -119,24 +127,18 @@ export function installSessionIcons(): () => void {
   // 应用晚挂载时侧边栏可能尚未出现，短暂轮询补扫。
   if (!timer) {
     timer = setInterval(() => {
-      if (document.querySelector('[data-slot="sidebar"]'))
+      if (document.querySelector(SIDEBAR_SELECTOR))
         clearInterval(timer)
     }, 400)
   }
 
   return () => {
-    style.remove()
+    iconStyle.unmount({ id: SESSION_ICON_STYLE_ID })
     ro.disconnect()
     unsubscribeStore()
     if (timer !== undefined)
       clearInterval(timer)
   }
-}
-
-export interface WorkspaceSessionOrder {
-  workspaceId: string
-  path: string
-  sessionIds: readonly string[]
 }
 
 /** 返回目标工作区与当前首个其他会话，供检出会话插到工作区最上方。 */

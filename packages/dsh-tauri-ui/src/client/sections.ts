@@ -1,4 +1,10 @@
 import type { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SettingsRow } from './types'
+import { useMemo, useSyncExternalStore } from 'react'
+import { SETTINGS_ONBOARDING_SLOT, SETTINGS_SECTION_SLOT } from './constants'
+import { useSettingsLocale } from './locale'
+
+export type { SettingsRow } from './types'
 /**
  * sections.ts — 设置分区/引导步骤的注册表投影。
  *
@@ -10,19 +16,6 @@ import type { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
  * label 与官方一致经 resolveSlotLabel 语义解析（函数型 label 即按当前
  * locale 求值，所以 locale 变更也要触发重算）。
  */
-import { useMemo, useSyncExternalStore } from 'react'
-import { useSettingsLocale } from './locale'
-
-/** 一列设置分区（或引导步骤）。 */
-export interface SettingsRow {
-  /** 条目 id（list 槽必填）。 */
-  id: string
-  /** 显示顺序（缺省 0）。 */
-  order: number
-  /** 解析后的显示名（函数型 label 已按当前 locale 求值）。 */
-  label: string
-}
-
 /** apply 时存入的槽注册中心（组件在 render 期经它订阅/投影）。 */
 let slotsRef: SlotRegistry | undefined
 
@@ -77,13 +70,13 @@ function useSlotVersion(slotKey: string): number {
 
 /** 设置分区导航行（'settings.section' 投影；订阅槽位与 locale 变更）。 */
 export function useSettingsSectionRows(): SettingsRow[] {
-  const sectionVersion = useSlotVersion('settings.section')
+  const sectionVersion = useSlotVersion(SETTINGS_SECTION_SLOT)
   useSettingsLocale()
-  return useMemo(() => projectRows('settings.section'), [sectionVersion])
+  return useMemo(() => projectRows(SETTINGS_SECTION_SLOT), [sectionVersion])
 }
 
 /** 引导步骤行（'settings.onboarding' 投影，仅 id+order）。 */
 export function useSettingsOnboardingSteps(): SettingsRow[] {
-  const onboardingVersion = useSlotVersion('settings.onboarding')
-  return useMemo(() => projectRows('settings.onboarding'), [onboardingVersion])
+  const onboardingVersion = useSlotVersion(SETTINGS_ONBOARDING_SLOT)
+  return useMemo(() => projectRows(SETTINGS_ONBOARDING_SLOT), [onboardingVersion])
 }

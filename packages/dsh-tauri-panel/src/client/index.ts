@@ -20,7 +20,11 @@ import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
 import { installPanelLocale } from './locale'
 import { installPanelService } from './service'
 import { installSidebarRoot } from './sidebar'
-import { installPanelStyles } from './styles'
+import { mountPanelStyles } from './styles'
+
+export { PANEL_PROTOCOL_SERVICE } from './constants'
+export type { IconProps } from './icons'
+export type { PanelActionItemProps, PanelContentSpec, SidebarRootProps } from './types'
 
 /** 插件显示名（诊断元数据）。 */
 export const name = 'dsh-tauri-panel'
@@ -33,7 +37,10 @@ export const inject = ['slots', 'layout', 'workspaces', 'locale']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  installPanelStyles()
+  ctx.effect(
+    () => mountPanelStyles(),
+    'dsh-tauri-panel: styles',
+  )
   installPanelLocale(ctx)
   // 面板协议宿主服务（panel.protocol：ActionItem + renderPanelContent）：
   // 只走 slots runtime，不依赖 renderer 补丁——无补丁时内容区替换仍可用。

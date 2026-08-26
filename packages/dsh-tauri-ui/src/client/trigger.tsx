@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ReactElement } from 'react'
+import type { SettingsTriggerProps } from './types'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
 /**
  * trigger.tsx — sidebar.settings 座位的新“赢家”（priority -1）。
@@ -18,52 +18,15 @@ import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
  * renderer 补丁（导出一行 SlotOutlet）存在的全部理由。
  */
 import { useCallback, useEffect, useState } from 'react'
+import {
+  SETTINGS_REGISTRANT,
+  SETTINGS_SIDEBAR_SLOT,
+  SETTINGS_TRIGGER_PRIORITY,
+  SETTINGS_TRIGGER_SLOT,
+} from './constants'
+
 import { useSettingsOnboardingSteps } from './sections'
 import { openSettings, useSettingsUi } from './store'
-
-/** GlobalStandardProps 的 useSessions 形状（本地镜像，避免外部类型依赖）。 */
-type SelectorHook<T> = <S>(sel: (s: T) => S) => S
-
-/** 本条目收到的合成 props 子集（其余成员不被消费，允许缺省）。 */
-interface SettingsTriggerProps {
-  /** sidebar.settings owner：侧栏展开态（折叠时渲染 rail 圆钮）。 */
-  wide: boolean
-  /** 框架标准钩子：会话列表快照。 */
-  useSessions: SelectorHook<SessionListState>
-  useWorkspaces?: unknown
-}
-
-/** 触发按钮样式（克隆官方 SettingsRoot.module.css 的 .trigger/.rail）。 */
-const baseTrigger: React.CSSProperties = {
-  boxSizing: 'border-box',
-  cursor: 'pointer',
-  width: 'calc(100% + 4px)',
-  height: 42,
-  color: 'var(--dsw-alias-label-primary)',
-  background: 'none',
-  border: 'none',
-  borderRadius: 12,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  margin: '4px -2px',
-  padding: '0 10px 0 8px',
-  fontFamily: 'inherit',
-  fontSize: 14,
-  lineHeight: '22px',
-  overflow: 'hidden',
-  flex: 'none',
-}
-
-const railTrigger: React.CSSProperties = {
-  borderRadius: '50%',
-  justifyContent: 'center',
-  gap: 0,
-  width: 36,
-  height: 36,
-  margin: '8px 0 10px',
-  padding: 0,
-}
 
 /**
  * 触发组件：侧栏脚部的齿轮按钮 + 空会话引导宿主。
@@ -76,7 +39,6 @@ export function SettingsTrigger({ wide, useSessions }: SettingsTriggerProps): Re
   const ui = useSettingsUi()
   const steps = useSettingsOnboardingSteps()
   const [completed, setCompleted] = useState<Set<string>>(() => new Set())
-  const [hovered, setHovered] = useState(false)
 
   // 官方同款引导谓词：就绪且（无当前会话 或 当前会话空日志）→ 引导激活。
   const onboardingActive = useSessions(
@@ -108,15 +70,9 @@ export function SettingsTrigger({ wide, useSessions }: SettingsTriggerProps): Re
         aria-haspopup="dialog"
         aria-expanded={ui.open}
         onClick={() => openSettings()}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          ...baseTrigger,
-          ...(!wide ? railTrigger : {}),
-          ...(hovered ? { background: 'var(--dsw-alias-interactive-bg-hover)' } : {}),
-        }}
+        className={`dsh-tu-settingsTrigger${wide ? '' : ' dsh-tu-settingsTriggerRail'}`}
       >
-        <SlotOutlet slotKey="settings.trigger" ownerProps={{ wide }} />
+        <SlotOutlet slotKey={SETTINGS_TRIGGER_SLOT} ownerProps={{ wide }} />
       </button>
       {step !== undefined && (
         <SlotOutlet
@@ -142,9 +98,9 @@ export function SettingsTrigger({ wide, useSessions }: SettingsTriggerProps): Re
  * @param ctx - 客户端根上下文。
  */
 export function registerSettingsTrigger(ctx: Context): void {
-  ctx.slots.inject('sidebar.settings' as never, () =>
+  ctx.slots.inject(SETTINGS_SIDEBAR_SLOT as never, () =>
     ctx.slots.register(
-      { name: 'sidebar.settings', priority: -1, registrant: 'dsh-tauri-ui' } as never,
+      { name: SETTINGS_SIDEBAR_SLOT, priority: SETTINGS_TRIGGER_PRIORITY, registrant: SETTINGS_REGISTRANT } as never,
       SettingsTrigger,
     ))
 }

@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ReactElement } from 'react'
+import type { SettingsSidebarProps } from './types'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
 /**
  * sidebar.tsx — shell.overlay 里的设置侧边栏（id 'dsh-tauri-ui-settings'）。
@@ -8,7 +8,7 @@ import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
  * 布局即需求方 ASCII：整窗左侧停靠 —— 左栏（← 返回应用 / 🔍 搜索设置…
  * / 设置项导航，只过滤左栏列表）+ 右侧内容区。内容区渲染当前激活分区：
  *
- *   <SlotOutlet slotKey="settings.section" ownerProps={{ close }} opts={{ only: activeId }} />
+ *   <SlotOutlet slotKey={SETTINGS_SECTION_SLOT} ownerProps={{ close }} opts={{ only: activeId }} />
  *
  * 与官方 SettingsPanel 的渲染调用逐参数一致（owner={close}，only=active）。
  * shell.overlay 是 list/root 且层本身 click-through，本条目 opt-in pointer
@@ -27,6 +27,12 @@ import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
  *   无“最小化/折叠 rail”模式：返回应用/Esc 即整体隐藏（与 codex 同思路）。
  */
 import { useEffect, useRef, useState } from 'react'
+import {
+  SETTINGS_REGISTRANT,
+  SETTINGS_SECTION_SLOT,
+  SETTINGS_SHELL_OVERLAY_SLOT,
+  SETTINGS_SIDEBAR_ID,
+} from './constants'
 import { ArrowRight } from './icons'
 import { settingsText, useSettingsLocale } from './locale'
 import { useSettingsSectionRows } from './sections'
@@ -39,142 +45,6 @@ import {
   settingsStore,
   useSettingsUi,
 } from './store'
-
-/** GlobalStandardProps 的 useSessions 形状（本地镜像）。 */
-type SelectorHook<T> = <S>(sel: (s: T) => S) => S
-
-/** shell.overlay 条目无 owner props；标准钩子被本组件消费。 */
-interface SettingsSidebarProps {
-  useSessions: SelectorHook<SessionListState>
-  useWorkspaces?: unknown
-}
-
-/**
- * 根节点：整窗停靠层。内容区背景 = 主界面 bg-base（item 2）；同时在此自带
- * 官方 .wSkVaW_root 定义域的 --dsh-composer-* 宽度变量（其外不继承）。
- */
-const rootStyle: React.CSSProperties = {
-  'position': 'fixed',
-  'inset': 0,
-  'zIndex': 1000,
-  'display': 'flex',
-  'background': 'var(--dsw-alias-bg-base)',
-  'color': 'var(--dsw-alias-label-primary)',
-  // 与主界面一致的宽度合约（官方值：chat-content-width 748px + 两侧 16px 留空）。
-  '--dsh-chat-content-width': '748px',
-  '--dsh-composer-card-max-width': 'calc(var(--dsh-chat-content-width) + 32px)',
-  '--dsh-composer-side-clearance': '16px',
-} as React.CSSProperties
-
-/** 左栏：官方 sidebar（.hHd-Xa_root）配色与内边距（item 1）；宽度动态。 */
-const railBaseStyle: React.CSSProperties = {
-  flex: 'none',
-  boxSizing: 'border-box',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-  padding: '6px 12px',
-  background: 'var(--dsw-specific-sidebar-fill)',
-  borderRight: '1px solid var(--dsw-alias-border-weak, rgba(127,127,127,0.2))',
-  overflow: 'hidden',
-}
-
-/** 拖拽手柄：8px 抓取条跨在左栏/内容区边界（镜像官方 DragHandle 交互）。 */
-const handleStyle: React.CSSProperties = {
-  flex: 'none',
-  alignSelf: 'stretch',
-  width: 8,
-  marginLeft: -4,
-  zIndex: 2,
-  cursor: 'col-resize',
-  touchAction: 'none',
-  background: 'transparent',
-  borderRadius: 4,
-}
-
-/** 内容区外层：占满剩余宽度、纵向滚动；背景继承根节点 bg-base。 */
-const contentOuterStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  height: '100%',
-  boxSizing: 'border-box',
-  overflowY: 'auto',
-  display: 'flex',
-}
-
-/** 内容区内层：与主界面 hero 行同宽（item 4），左右留空对齐，居中。 */
-const contentInnerStyle: React.CSSProperties = {
-  width: 'min(calc(var(--dsh-composer-card-max-width) + 2 * var(--dsh-composer-side-clearance)), 100%)',
-  margin: '0 auto',
-  boxSizing: 'border-box',
-  padding: '28px 36px',
-}
-
-const backButtonStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  alignSelf: 'flex-start',
-  padding: '6px 10px',
-  border: 'none',
-  background: 'none',
-  borderRadius: 10,
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  width: '100%',
-  fontSize: 14,
-  lineHeight: '22px',
-  color: 'var(--dsw-alias-label-primary)',
-}
-
-const searchStyle: React.CSSProperties = {
-  width: '100%',
-  height: 36,
-  boxSizing: 'border-box',
-  padding: '0 10px',
-  borderRadius: 10,
-  border: '1px solid var(--dsw-alias-border-weak, rgba(127,127,127,0.25))',
-  background: 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,0.08))',
-  color: 'var(--dsw-alias-label-primary)',
-  fontFamily: 'inherit',
-  fontSize: 14,
-  outline: 'none',
-}
-
-const navStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  flex: 1,
-  overflowY: 'auto',
-  minHeight: 0,
-}
-
-const navItemStyle: React.CSSProperties = {
-  boxSizing: 'border-box',
-  height: 40,
-  padding: '9px 12px',
-  border: 'none',
-  background: 'none',
-  borderRadius: 12,
-  textAlign: 'left',
-  cursor: 'pointer',
-  fontFamily: 'inherit',
-  fontSize: 14,
-  lineHeight: '22px',
-  fontWeight: 400,
-  color: 'var(--dsw-alias-label-primary)',
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-}
-
-const emptyStyle: React.CSSProperties = {
-  padding: '12px 10px',
-  fontSize: 13,
-  lineHeight: '20px',
-  color: 'var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary))',
-}
 
 /**
  * 侧边栏组件：整窗 docked 左栏 + 右侧官方设置分区内容。
@@ -257,25 +127,22 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
     : visible[0]?.id
 
   return (
-    <div style={rootStyle} data-slot-sidebar="dsh-tauri-ui">
-      <div style={{ ...railBaseStyle, width: railWidth }}>
+    <div className="dsh-tu-settingsRoot" data-slot-sidebar="dsh-tauri-ui">
+      <div
+        className="dsh-tu-settingsRail"
+        style={{ '--dsh-settings-rail-width': `${railWidth}px` } as React.CSSProperties}
+      >
         <button
           type="button"
-          style={backButtonStyle}
+          className="dsh-tu-settingsBack"
           onClick={() => closeSettings()}
-          onMouseEnter={(event) => {
-            event.currentTarget.style.background = 'var(--dsw-alias-interactive-bg-hover)'
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.background = 'none'
-          }}
         >
           <ArrowRight />
           {settingsText('back')}
         </button>
         <input
           ref={searchRef}
-          style={searchStyle}
+          className="dsh-tu-settingsSearch"
           value={ui.query}
           placeholder={settingsText('search')}
           aria-label={settingsText('search')}
@@ -284,37 +151,26 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
               state.query = event.target.value
             })}
         />
-        <nav style={navStyle} aria-label={settingsText('settings')}>
+        <nav className="dsh-tu-settingsNav" aria-label={settingsText('settings')}>
           {visible.map(row => (
             <button
               key={row.id}
               type="button"
-              style={{
-                ...navItemStyle,
-                ...(row.id === activeId
-                  ? {
-                      background: 'var(--dsw-specific-sidebar-nav-item-active)',
-                      fontWeight: 500,
-                    }
-                  : {}),
-              }}
+              className={`dsh-tu-settingsNavItem${row.id === activeId ? ' dsh-tu-settingsNavItemActive' : ''}`}
               aria-current={row.id === activeId ? 'true' : undefined}
               onClick={() => selectSection(row.id)}
             >
               {row.label}
             </button>
           ))}
-          {visible.length === 0 && <div style={emptyStyle}>{settingsText('noResults')}</div>}
+          {visible.length === 0 && <div className="dsh-tu-settingsEmpty">{settingsText('noResults')}</div>}
         </nav>
       </div>
       <div
         role="separator"
         aria-orientation="vertical"
         aria-label={settingsText('settings')}
-        style={{
-          ...handleStyle,
-          background: dragging ? 'var(--dsw-alias-border-l2)' : 'transparent',
-        }}
+        className={`dsh-tu-settingsHandle${dragging ? ' dsh-tu-settingsHandleDragging' : ''}`}
         onPointerDown={(event) => {
           event.preventDefault()
           event.currentTarget.setPointerCapture(event.pointerId)
@@ -338,11 +194,11 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
           window.addEventListener('pointerup', onUp)
         }}
       />
-      <div style={contentOuterStyle}>
-        <div style={contentInnerStyle}>
+      <div className="dsh-tu-settingsContentOuter">
+        <div className="dsh-tu-settingsContentInner">
           {activeId !== undefined && (
             <SlotOutlet
-              slotKey="settings.section"
+              slotKey={SETTINGS_SECTION_SLOT}
               ownerProps={{ close: () => closeSettings() }}
               opts={{ only: activeId }}
             />
@@ -361,7 +217,7 @@ export function registerSettingsSidebar(ctx: Context): void {
   ctx.effect(
     () =>
       ctx.slots.register(
-        { name: 'shell.overlay', id: 'dsh-tauri-ui-settings', registrant: 'dsh-tauri-ui' },
+        { name: SETTINGS_SHELL_OVERLAY_SLOT, id: SETTINGS_SIDEBAR_ID, registrant: SETTINGS_REGISTRANT },
         SettingsSidebar,
       ),
     'dsh-tauri-ui: settings sidebar',

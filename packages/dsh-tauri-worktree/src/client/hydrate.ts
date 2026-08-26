@@ -5,16 +5,8 @@
  * 状态条和弹窗均依赖本 observer 在普通历史会话打开前完成 hydration。
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListSnapshot, WorkspaceListSnapshot } from './types'
 import { attachWorktreeSession, discardWorktree, fetchStatus, patchSession, selectSessionState, worktreeStore } from './store'
-
-interface SessionListSnapshot {
-  ids: string[]
-  current?: string
-}
-
-interface WorkspaceListSnapshot {
-  archivedSessionIds: readonly string[]
-}
 
 export function installWorktreeHydration(ctx: ClientContext): () => void {
   // HARDCODE: SessionRuntime.binding() is an internal DSH 0.1.1-rc.2 API.

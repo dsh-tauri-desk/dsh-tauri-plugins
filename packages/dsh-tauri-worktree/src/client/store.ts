@@ -1,3 +1,10 @@
+import type {
+  WorktreeCheckout,
+  WorktreeCreate,
+  WorktreeSessionState,
+  WorktreeStatus,
+  WorktreeUiState,
+} from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 /**
  * store.ts — dsh-tauri-worktree 的共享客户端状态（per-session 工作树状态 + RPC）。
@@ -8,13 +15,12 @@ import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
  * 本文件的 worktreeApi 里（/api/dsh-worktree/*），与宿主侧的 HTTP 路由一一对应。
  */
 import { useSyncExternalStore } from 'react'
-
-const PREFERRED_MODE_KEY = 'dsh-tauri-worktree:preferred-mode'
+import { PREFERRED_MODE_STORAGE_KEY, WORKTREE_API_PREFIX } from './constants'
 
 /** 新会话沿用用户最近选择；存储不可用时保持官方默认「本地」。 */
 export function preferredNewSessionMode(): 'local' | 'pending' {
   try {
-    return localStorage.getItem(PREFERRED_MODE_KEY) === 'pending' ? 'pending' : 'local'
+    return localStorage.getItem(PREFERRED_MODE_STORAGE_KEY) === 'pending' ? 'pending' : 'local'
   }
   catch {
     return 'local'
@@ -23,7 +29,7 @@ export function preferredNewSessionMode(): 'local' | 'pending' {
 
 export function rememberNewSessionMode(mode: 'local' | 'pending'): void {
   try {
-    localStorage.setItem(PREFERRED_MODE_KEY, mode)
+    localStorage.setItem(PREFERRED_MODE_STORAGE_KEY, mode)
   }
   catch {
     // 隐私模式或受限存储不影响会话功能。
@@ -35,38 +41,7 @@ function errMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-/** 工作树处理阶段（会话处理状态与日志展示的三阶段）。 */
-export type WorktreePhase = 'idle' | 'creating' | 'created' | 'thinking' | 'error'
-
-/** 某会话绑定的工作树状态。 */
-export interface WorktreeSessionState {
-  /** 模式：local（本地）| pending（下一条消息新建）| worktree（隔离工作树）。 */
-  mode: 'local' | 'pending' | 'worktree'
-  /** 会话工作目录是否位于 git 仓库内（非 git 目录强制 local 且隐藏模式选择器）。 */
-  isGit: boolean
-  /** 处理阶段（本地会话恒为 idle）。 */
-  phase: WorktreePhase
-  /** 阶段 1 的加载提示（正在准备工作区 → 正在检出文件），随创建推进。 */
-  loadingLabel: string
-  /** 阶段 2 的创建日志（点击查看）。 */
-  log: string[]
-  /** 工作树标识 [hash]/[dirname]（弹窗的「当前关联路径」）。 */
-  worktreeKey: string
-  /** 工作树绝对路径。 */
-  worktreePath: string
-  /** 项目（目标仓库）绝对路径。 */
-  projectPath: string
-  /** 创建工作树前所在的源会话（用于侧边栏归组与完成后返回）。 */
-  sourceSessionId: string
-  /** 检出弹窗分支名输入框当前值。 */
-  branchName: string
-  /** 检出弹窗是否打开。 */
-  checkoutOpen: boolean
-  /** 放弃弹窗是否打开。 */
-  abandonOpen: boolean
-  /** 最近一次 API 错误（展示用）。 */
-  error: string
-}
+export type { WorktreePhase, WorktreeSessionState } from './types'
 
 /** 无绑定会话的初始状态。 */
 export function blankState(): WorktreeSessionState {
@@ -91,11 +66,7 @@ export function blankState(): WorktreeSessionState {
 /** useSyncExternalStore 的空 snapshot 必须保持引用稳定，否则会触发无限重渲染。 */
 const EMPTY_STATE = blankState()
 
-/** 全局共享状态源（模块级单例；插件重载时随 bundle 重建，可接受）。 */
-export interface WorktreeUiState {
-  /** 按会话 id 缓存的工作树状态。 */
-  bySession: Record<string, WorktreeSessionState>
-}
+export type { WorktreeCheckout, WorktreeCreate, WorktreeStatus, WorktreeUiState } from './types'
 
 export const worktreeStore = createSnapshotStore<WorktreeUiState>({
   bySession: {},
@@ -130,10 +101,8 @@ export function useWorktreeSession(sessionId: string | undefined): WorktreeSessi
 // RPC（/api/dsh-worktree/*，同源 fetch）
 // ---------------------------------------------------------------------------
 
-const API_PREFIX = '/api/dsh-worktree'
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_PREFIX}${path}`, {
+  const res = await fetch(`${WORKTREE_API_PREFIX}${path}`, {
     headers: { 'content-type': 'application/json' },
     ...init,
   })
@@ -142,31 +111,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`请求失败 (${res.status}): ${text}`)
   }
   return res.json() as Promise<T>
-}
-
-export interface WorktreeStatus {
-  mode: 'local' | 'worktree'
-  worktreeKey?: string
-  worktreePath?: string
-  projectPath?: string
-  hash?: string
-  dirname?: string
-  sourceSessionId?: string
-  log?: string[]
-  /** 会话工作目录是否位于 git 仓库内（非 git 目录时客户端应强制本地并隐藏模式选择器）。 */
-  isGit?: boolean
-}
-
-export interface WorktreeCreate {
-  ok: boolean
-  hash: string
-  dirname: string
-  worktreeKey: string
-  worktreePath: string
-  projectPath: string
-  sourceSessionId: string
-  log: string[]
-  existed: boolean
 }
 
 /** 查询某会话的工作树状态（GET，sessionId 走查询串）。 */
@@ -188,19 +132,6 @@ export function attachWorktreeSession(sessionId: string): Promise<{ ok: boolean,
     method: 'POST',
     body: JSON.stringify({ sessionId }),
   })
-}
-
-/** 检出本地：把工作树改动带回本地分支，解除绑定，恢复本地会话。 */
-export interface WorktreeCheckout {
-  ok: boolean
-  branch: string
-  projectPath?: string
-  /**
-   * 检出后带回本地的新会话 id（继承工作树会话完整对话历史，cwd 指向本地项目）。
-   * 缺失表示继承会话创建失败（宿主返回 warning）。
-   */
-  targetSessionId?: string
-  warning?: string
 }
 
 export function checkoutWorktree(
