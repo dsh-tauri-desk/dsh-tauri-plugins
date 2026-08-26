@@ -1,5 +1,5 @@
 {
-  "name": "pkg-placeholder",
+  "name": "dsh-tauri-plugins",
   "type": "module",
   "version": "0.0.0",
   "private": true,
@@ -7,13 +7,22 @@
   "description": "_description_",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/hairyf/pkg-placeholder#readme",
+  "homepage": "https://github.com/hairyf/dsh-tauri-plugins#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hairyf/pkg-placeholder.git"
+    "url": "git+https://github.com/hairyf/dsh-tauri-plugins.git"
   },
-  "bugs": "https://github.com/hairyf/pkg-placeholder/issues",
-  "keywords": [],
+  "bugs": "https://github.com/hairyf/dsh-tauri-plugins/issues",
+  "keywords": [
+    "dsh",
+    "plugin",
+    "dsh-plugin",
+    "dsh-tauri",
+    "react",
+    "react-dom",
+    "tauri",
+    "deepseek-harness"
+  ],
   "scripts": {
     "build": "pnpm -r run build",
     "dev": "pnpm -r run dev",
@@ -26,14 +35,20 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:cli",
     "@antfu/ni": "catalog:cli",
-    "@antfu/utils": "catalog:inlined",
-    "@pkg-placeholder/core": "workspace:*",
-    "@pkg-placeholder/utils": "workspace:*",
+    "@deepseek-ai/cordis": "catalog:dsh",
+    "@deepseek-ai/dsh-client-runtime": "catalog:dsh",
+    "@deepseek-ai/dsh-client-ui-layout": "catalog:dsh",
+    "@deepseek-ai/dsh-client-ui-primitives": "catalog:dsh",
+    "@deepseek-ai/dsh-client-ui-renderer": "catalog:dsh",
     "@types/node": "catalog:types",
+    "@types/react": "catalog:types",
+    "@types/react-dom": "catalog:types",
     "bumpp": "catalog:cli",
     "eslint": "catalog:cli",
     "lint-staged": "catalog:cli",
     "publint": "catalog:cli",
+    "react": "catalog:react",
+    "react-dom": "catalog:react",
     "simple-git-hooks": "catalog:cli",
     "tinyexec": "catalog:testing",
     "tsdown": "catalog:cli",
@@ -47,7 +62,5 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm i --frozen-lockfile --ignore-scripts --offline && npx lint-staged"
   },
-  "lint-staged": {
-    "*": "eslint --fix"
-  }
+  "lint-staged": { "*": "eslint --fix" }
 }
