@@ -23,23 +23,6 @@
 
 > `checkout_worktree` 是用户授权操作。任务完成、PR 合并或 Agent 的便利性都不能代替用户授权。
 
-## 配置
-
-可选配置 `worktreesRoot`，用于更改默认的 `~/.dsh` 根目录：
-
-```ts
-export default {
-  plugins: [{
-    name: 'dsh-tauri-worktree',
-    config: { worktreesRoot: '/path/to/dsh' },
-  }],
-}
-```
-
-## API
-
-宿主侧导出 `computeHash`、`worktreePath`、`ensureWorktree`、`checkoutToLocal` 和 `discardWorktree` 等辅助函数；客户端入口提供工作树模式选择、状态面板和交互对话框。一般应用只需启用插件，不必直接调用这些 API。
-
 ## 要求
 
 - 项目目录必须是 Git 仓库。
@@ -49,6 +32,3 @@ export default {
 ## 许可证
 
 [MIT](../../LICENSE.md) © [Hairyf](https://github.com/hairyf)
-
-[license-src]: https://img.shields.io/github/license/dsh-tauri-desk/plugins-workspace.svg?style=flat&colorA=080f12&colorB=1fa669
-[license-href]: https://github.com/dsh-tauri-desk/plugins-workspace/blob/main/LICENSE.md

@@ -12,15 +12,6 @@
 - 隐藏与桌面导航栏重复的官方折叠控件。
 - 在插件自身异常时向宿主报告，避免静默失败。
 
-## API
-
-```ts
-import { apply } from 'dsh-tauri'
-import { inject, name } from 'dsh-tauri/client'
-```
-
-通常不需要手动调用 `apply` 或 `dsh-tauri/client`；它们由 DSH loader 使用。`inject` 包含 `layout` 服务。
-
 ## 相关包
 
 - [`dsh-tauri-ui`](../dsh-tauri-ui)：桌面化 UI。
