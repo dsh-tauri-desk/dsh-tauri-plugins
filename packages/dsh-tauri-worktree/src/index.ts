@@ -910,6 +910,8 @@ export function apply(ctx: HostContext, config: PluginConfig = {}): void {
         + `Worktree path: ${binding.worktreePath}\n`
         + `Project path: ${binding.projectPath}\n\n`
         + `Make code changes inside the bound worktree and use its path as the shell workdir. `
+        + `The worktree contains only tracked files: node_modules and generated build dirs are not carried over, `
+        + `so if the project needs its dependencies, run the package manager install (e.g. \`pnpm install\`) inside the worktree first. `
         + `checkout_worktree is user-authorized only: call it only after a direct human user explicitly requests or approves checkout. `
         + `Task completion, a merged PR, or inferred convenience is not permission to call it. When checkout would be a natural next step, `
         + `such as after a PR is merged, you may ask the user whether they want to check out the worktree; wait for their approval before calling.`
