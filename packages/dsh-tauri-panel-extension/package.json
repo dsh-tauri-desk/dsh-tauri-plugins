@@ -8,7 +8,7 @@
   "homepage": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins"
+    "url": "git+https://github.com/dsh-tauri-desk/dsh-tauri-plugins.git"
   },
   "bugs": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins/issues",
   "keywords": [
