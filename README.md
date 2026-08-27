@@ -2,7 +2,7 @@
 
 为 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 提供 Tauri 桌面端能力的插件工作区。插件遵循 DSH 的 **host half / client half** 模型：宿主侧负责工具、路由和系统上下文，客户端负责 iframe 内的 UI 与消息桥接。
 
-![dsh-tauri 插件工作区](public/[placeholder])
+![dsh-tauri 插件工作区](public/overview.png)
 
 ## 插件
 

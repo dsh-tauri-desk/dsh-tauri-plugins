@@ -2,7 +2,7 @@
 
 `dsh-tauri-ui` 为 DSH 提供 Tauri 风格的客户端界面扩展。目前包含将设置对话框改造成左侧停靠设置栏的功能。
 
-![dsh-tauri-ui 设置侧边栏](public/[placeholder])
+![dsh-tauri-ui 设置侧边栏](public/settings-sidebar.png)
 
 ## 功能
 
