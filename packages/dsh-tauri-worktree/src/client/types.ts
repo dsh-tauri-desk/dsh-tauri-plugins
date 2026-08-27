@@ -58,6 +58,17 @@ export interface DialogListState {
 export interface SessionListSnapshot {
   ids: string[]
   current?: string
+  phase?: 'pending' | 'ready'
+}
+
+export interface WorktreeHydrationSessionsRuntime {
+  binding: (sessionId: string) => { session?: { subscribe?: (listener: () => void) => () => void } } | undefined
+  list: {
+    getSnapshot: () => SessionListSnapshot
+    subscribe: (listener: () => void) => () => void
+  }
+  open: (sessionId: string) => void
+  refresh: () => Promise<void>
 }
 
 export interface WorkspaceListSnapshot {

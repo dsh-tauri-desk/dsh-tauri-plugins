@@ -5,18 +5,17 @@
  * 状态条和弹窗均依赖本 observer 在普通历史会话打开前完成 hydration。
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionListSnapshot, WorkspaceListSnapshot } from './types'
+import type { SessionListSnapshot, WorkspaceListSnapshot, WorktreeHydrationSessionsRuntime } from './types'
+import { openWorktreeSession } from './handoff'
 import { attachWorktreeSession, discardWorktree, fetchStatus, patchSession, selectSessionState, worktreeStore } from './store'
 
 export function installWorktreeHydration(ctx: ClientContext): () => void {
   // HARDCODE: SessionRuntime.binding() is an internal DSH 0.1.1-rc.2 API.
   // The public session-list source does not emit every tool-event mutation, so
   // live checkout/discard reconciliation subscribes to the bound Session source.
-  const sessionsRuntime = ctx.sessions as unknown as {
-    binding: (sessionId: string) => { session?: { subscribe?: (listener: () => void) => () => void } } | undefined
-  }
+  const sessionsRuntime = ctx.sessions as unknown as WorktreeHydrationSessionsRuntime
   const seen = new Set<string>()
-  const switching = new Set<string>()
+  const switching = new Map<string, string>()
   const cleanedArchives = new Set<string>()
   const inFlight = new Set<string>()
   const queued = new Set<string>()
@@ -55,10 +54,17 @@ export function installWorktreeHydration(ctx: ClientContext): () => void {
             void attachWorktreeSession(sessionId).catch(() => {})
           // create_worktree 工具在 Host 先发布继承上下文的新根会话；它进入列表后，
           // 客户端把当前源会话视觉交接到该工作树会话（不启动额外模型 turn）。
-          const currentId = (ctx.sessions.list.getSnapshot() as SessionListSnapshot).current
-          if (status.sourceSessionId && currentId === status.sourceSessionId && !switching.has(sessionId)) {
-            switching.add(sessionId)
-            ctx.sessions.open(sessionId as never)
+          const currentId = sessionsRuntime.list.getSnapshot().current
+          const sourceSessionId = status.sourceSessionId
+          if (sourceSessionId && currentId === sourceSessionId && !switching.has(sourceSessionId)) {
+            switching.set(sourceSessionId, sessionId)
+            void openWorktreeSession(sessionsRuntime, sourceSessionId, sessionId, {
+              isActive: () => !disposed,
+            })
+              .finally(() => {
+                if (switching.get(sourceSessionId) === sessionId)
+                  switching.delete(sourceSessionId)
+              })
           }
           return
         }

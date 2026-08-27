@@ -16,6 +16,9 @@ export const DIALOG_EFFECT = `${WORKTREE_PLUGIN_NAME}: dialog`
 export const HYDRATION_EFFECT = `${WORKTREE_PLUGIN_NAME}: hydrate session bindings`
 export const SESSION_ICONS_EFFECT = `${WORKTREE_PLUGIN_NAME}: session branch icons`
 
+export const SESSION_SWITCH_RETRY_DELAY_MS = 100
+export const SESSION_SWITCH_MAX_ATTEMPTS = 30
+
 export const MODE_SELECT_STYLE_ID = '@deepseek-ai/dsh-tauri-worktree/ModeSelect.module.css'
 export const WORKTREE_STYLE_ID = '@deepseek-ai/dsh-tauri-worktree/SurfaceDialog.module.css'
 export const SESSION_ICON_STYLE_ID = '@deepseek-ai/dsh-tauri-worktree/SessionBranchIcon.module.css'
