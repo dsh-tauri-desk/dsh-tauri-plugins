@@ -4,9 +4,13 @@
 
 ![dsh-tauri-panel 面板](public/[placeholder])
 
-## 当前状态
+## 面板协议
 
-这是一个基础骨架包。它可以被 DSH loader 正常加载，但当前不主动渲染面板或注册宿主行为。需要面板扩展入口的集成可以先依赖此包，未来版本将保持兼容地增加能力。
+客户端注册 `sidebar.panel.action` 槽，并通过反射服务 `panel.protocol` 向面板扩展提供：
+
+- `ActionItem`：统一的侧栏面板条目。
+- `renderPanelContent(spec)`：切换面板内容与官方会话内容。
+- `closePanelContent()`：显式恢复官方会话内容，适合面板内跳转到会话的动作。
 
 ## 相关包
 

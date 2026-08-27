@@ -24,6 +24,7 @@
 - 完成非平凡改动后必须运行 lint、typecheck、test 和相关 build。
 - 优先使用相对路径导入；只有仓库已经配置并使用的别名才能继续使用。
 - 类型和常量必须显式导入，避免隐式或自动导入。
+- React 组件文件统一使用全小写 kebab-case（`xx-xx.tsx`），例如 `extension-panel.tsx`、`markdown-preview.tsx`；不得使用 PascalCase 文件名。
 - 函数尽量声明明确返回类型；复杂 inline 类型应提取为命名类型。
 - 注释解释设计原因，不重复描述代码表面行为。
 
