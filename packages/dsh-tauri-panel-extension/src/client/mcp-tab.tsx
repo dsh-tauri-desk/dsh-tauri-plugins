@@ -176,7 +176,7 @@ export function McpTab(props: McpTabProps): ReactElement {
       const body = await injected.applyImport(items)
       const failed = body.results.filter(item => !item.ok)
       setOutcome(failed.length === 0
-        ? { ok: true, text: t('restartNeeded') }
+        ? null
         : { ok: false, text: `${t('failed')}: ${failed.map(item => `${item.name} (${item.error})`).join(', ')}` })
       setImportOpen(false)
       setPending(true)
@@ -318,7 +318,7 @@ export function McpTab(props: McpTabProps): ReactElement {
     try {
       await injected.save(input)
       setEditor(null)
-      setOutcome({ ok: true, text: t('restartNeeded') })
+      setOutcome(null)
       reloadList(true)
     }
     catch (error) {
@@ -333,7 +333,7 @@ export function McpTab(props: McpTabProps): ReactElement {
     setBusy(true)
     try {
       await injected.toggle(row.id, !row.disabled)
-      setOutcome({ ok: true, text: t('restartNeeded') })
+      setOutcome(null)
       reloadList(true)
     }
     catch (error) {
@@ -350,7 +350,7 @@ export function McpTab(props: McpTabProps): ReactElement {
     setBusy(true)
     try {
       await injected.remove(confirmId)
-      setOutcome({ ok: true, text: t('restartNeeded') })
+      setOutcome(null)
       reloadList(true)
     }
     catch (error) {
