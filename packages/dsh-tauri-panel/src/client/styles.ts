@@ -1,6 +1,6 @@
 /** CSS generated as css-render nodes so every declaration remains structured. */
 import { CssRender } from 'css-render'
-import { PANEL_STYLE_ID } from './constants'
+import { PANEL_DATA_ATTRIBUTES, PANEL_STYLE_ID } from './constants'
 
 const cssr = CssRender()
 const { c } = cssr
@@ -115,6 +115,10 @@ const panelStyle = c([
   c('.dshp-collapsed .dshp-settingsArea,.dshp-collapsed .dshp-footerActions', { justifyContent: 'center', width: 'auto', display: 'flex' }),
   c('.dshp-panelView', { height: '100%', boxSizing: 'border-box', minWidth: 0, overflowY: 'auto', scrollbarGutter: 'stable' }),
   c('.dshp-panelViewColumn', { maxWidth: 'var(--dsh-chat-content-width,780px)', minHeight: '100%', width: '100%', margin: '0 auto', flexDirection: 'column', gap: '16px', display: 'flex' }),
+  // 面板激活期间，侧栏工作区单项撤销 hover 底色（仅非选中行；选中行保留
+  // 自己的选中态，避免点按目标不可辨）。语义选择器按官方 aria 状态匹配，
+  // 不依赖 css-module hash。
+  c(`[${PANEL_DATA_ATTRIBUTES.active}] [role="treeitem"]:not([aria-selected="true"]):hover`, { background: 'transparent' }),
   c('@keyframes dshp-rail-in', [c('from', { opacity: 0, transform: 'translate(49px)' })]),
   c('@keyframes dshp-rail-fade-in', [c('from', { opacity: 0 })]),
   c('@media (prefers-reduced-motion: reduce)', [c('.dshp-fading>*', { transition: 'none' }), c('.dshp-railIn .dshp-iconButton,.dshp-railIn .dshp-menuItem,.dshp-railIn .dshp-footArea,.dshp-railIn .dshp-regionArea', { animation: 'none' })]),

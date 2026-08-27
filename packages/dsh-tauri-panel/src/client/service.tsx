@@ -3,7 +3,7 @@ import type { ReactElement } from 'react'
 import type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { useSyncExternalStore } from 'react'
-import { PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, PANEL_PROTOCOL_SERVICE, PANEL_VIEW_COMPONENT_ID, PANEL_VIEW_SLOT } from './constants'
+import { PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, PANEL_PROTOCOL_SERVICE, PANEL_VIEW_COMPONENT_ID, PANEL_VIEW_SLOT, SIDEBAR_INTERACTIVE_SELECTOR, SIDEBAR_KEEP_OPEN_SELECTOR, WORKSPACE_GROUP_SELECTOR } from './constants'
 import { NS } from './locale'
 
 export type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './types'
@@ -26,11 +26,10 @@ export type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './ty
  *     → 官方恢复（toggle 语义）。
  *   - 替换状态存共享 snapshot store：ActionItem 经 useSyncExternalStore
  *     感知「当前替换 id === 自己 id」→ 保持 active（hover）样式。
- *   - 退出时机：无关闭按钮——document capture 层监听 pointerdown，但**只
- *     响应侧栏内点击**（[data-dshp-panel-sidebar] 根容器）：点侧栏任意处
- *     （会话/搜索/筛选/新会话/折叠/设置等）即恢复官方会话界面，目标操作
- *     继续正常执行；右侧区域（第三方悬浮按钮等）不影响替换，避免误关。
- *     替换视图内部与面板条目自身不触发（后者留给条目 onClick）。
+ *   - 退出时机：无关闭按钮——document capture 层监听 pointerdown，只在侧栏
+ *     内的有效导航/操作控件被点击时恢复官方会话界面；空白区、面板条目和只
+ *     改变工作区列表呈现的控件（工作区折叠行、分组、添加工作区）保持面板。
+ *     右侧区域（第三方悬浮按钮等）不影响替换，避免误关。
  *
  * 不能常驻注册 + SlotOutlet 透传：SlotOutlet 对 single 槽只渲染 live 条目，
  * 自己 live 后渲染官方条目 = 自递归（无公开 API 渲染被 shadow 条目）。
@@ -65,20 +64,48 @@ function ConversationSeat({ t }: { t: (key: string) => string }): ReactElement |
 }
 
 /**
- * capture 层 pointerdown：替换激活时，只响应**侧栏内**（[data-dshp-panel-sidebar]）
- * 的点击——右侧区域（第三方悬浮按钮等）不影响替换，避免误关。侧栏内点击
- * 替换视图/面板条目不处理（条目留给 onClick），其余关闭替换——官方会话区
- * 恢复，目标操作继续正常执行。
+ * 判断侧栏 pointerdown 是否代表离开当前面板的导航动作：
+ *   - 面板视图/条目与空白区不是动作，保持面板；
+ *   - 只改变侧栏呈现的控件保持面板（工作区“分组方式”“添加工作区”按钮，
+ *     以及工作区折叠行本体——折叠行内的菜单/新建按钮仍是动作，会关闭）；
+ *   - 其余在侧栏内的可交互控件（会话行、搜索结果、设置等）视为导航，关闭。
  */
+export function shouldClosePanelForSidebarTarget(target: Element | null): boolean {
+  if (!target)
+    return false
+  const sidebar = target.closest(`[${PANEL_DATA_ATTRIBUTES.sidebar}]`)
+  if (!sidebar)
+    return false
+  if (target.closest(`[${PANEL_DATA_ATTRIBUTES.view}],[${PANEL_DATA_ATTRIBUTES.action}]`))
+    return false
+  if (target.closest(SIDEBAR_KEEP_OPEN_SELECTOR))
+    return false
+
+  const interactive = target.closest(SIDEBAR_INTERACTIVE_SELECTOR)
+  if (!interactive || !sidebar.contains(interactive))
+    return false
+
+  // 工作区折叠行本身不在可交互集合内（自然保持面板）；嵌套按钮（工作区菜单、
+  // 新建会话）是真实动作，按自身语义关闭。
+  const workspaceGroup = target.closest(WORKSPACE_GROUP_SELECTOR)
+  return workspaceGroup === null || interactive !== workspaceGroup
+}
+
+/** 捕获侧栏导航动作并在目标自身的 click 行为执行前恢复官方会话区。 */
 function onPointerDownCapture(event: PointerEvent): void {
   if (!conversationSeat)
     return
-  const target = event.target as HTMLElement | null
-  if (target?.closest(`[${PANEL_DATA_ATTRIBUTES.sidebar}]`) === null)
-    return
-  if (target?.closest(`[${PANEL_DATA_ATTRIBUTES.view}]`) !== null || target?.closest(`[${PANEL_DATA_ATTRIBUTES.action}]`) !== null)
-    return
-  closeConversation()
+  if (shouldClosePanelForSidebarTarget(event.target instanceof Element ? event.target : null))
+    closeConversation()
+}
+
+/** 将面板激活态投影到侧栏根，供官方工作区行的跨插件样式协议使用。 */
+function setSidebarPanelActive(active: boolean): void {
+  const sidebar = document.querySelector(`[${PANEL_DATA_ATTRIBUTES.sidebar}]`)
+  if (active)
+    sidebar?.setAttribute(PANEL_DATA_ATTRIBUTES.active, '')
+  else
+    sidebar?.removeAttribute(PANEL_DATA_ATTRIBUTES.active)
 }
 
 /** 打开会话区替换：动态注册 priority -1 的 conversation 条目。 */
@@ -100,6 +127,7 @@ function openConversation(ctx: Context, spec: PanelContentSpec): void {
       ConversationSeat,
     ))
   document.addEventListener('pointerdown', onPointerDownCapture, true)
+  setSidebarPanelActive(true)
 }
 
 /** 关闭会话区替换：dispose inject 句柄 → 注销条目 → 官方 ui-conversation 恢复。 */
@@ -109,6 +137,7 @@ function closeConversation(): void {
   currentSpec = undefined
   panelViewStore.set(null)
   document.removeEventListener('pointerdown', onPointerDownCapture, true)
+  setSidebarPanelActive(false)
 }
 
 /** 订阅当前替换 id（null = 官方会话区）。 */
