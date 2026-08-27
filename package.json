@@ -27,7 +27,7 @@
     "build": "pnpm -r run build",
     "dev": "pnpm -r run dev",
     "lint": "eslint .",
-    "release": "bumpp",
+    "release": "bumpp -r",
     "test": "vitest",
     "typecheck": "pnpm -r run typecheck",
     "prepare": "simple-git-hooks"
