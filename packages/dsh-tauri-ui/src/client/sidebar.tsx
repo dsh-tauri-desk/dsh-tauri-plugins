@@ -36,6 +36,7 @@ import {
 import { ArrowRight } from './icons'
 import { settingsText, useSettingsLocale } from './locale'
 import { useSettingsSectionRows } from './sections'
+import { concealSettingsObstructions } from './settings-obstructions'
 import {
   clampRailWidth,
   closeSettings,
@@ -81,34 +82,13 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
     searchRef.current?.focus()
   }, [ui.open])
 
-  // 自定义主题可能把 --dsw-alias-bg-base 设定为半透明：设置页（整窗停靠层，
-  // rootStyle 的背景取该变量）打开时会与会话区/侧栏（含右侧详情栏）重叠显形。
-  // 打开时把下方各内容槽（sidebar / conversation / details）的宿主列（真实盒，
-  // 即槽锚点 .parentElement）用 opacity:0 隐藏，关闭时复原。visibility 会因局部
-  // 显式可见或 display:contents 中间节点在多级嵌套内容（如 workspace 的
-  // sectionHeader）上被覆盖而不可靠；opacity:0 对整个子树按组生效，后代无法反制。
-  // 设置页在兄弟槽 shell.overlay，不受影响。
+  // 自定义主题可能让设置页背景半透明，独立挂载到 body 的第三方 overlay 也可能
+  // 建立自己的层叠上下文。设置打开期间隐藏并禁用这些下层/外部表面，关闭时由
+  // disposer 精确恢复插件或主题原先拥有的内联状态。
   useEffect(() => {
-    const targets: HTMLElement[] = []
-    for (const slotKey of ['sidebar', 'conversation', 'details']) {
-      const anchor = document.querySelector<HTMLElement>(`[data-slot="${slotKey}"]`)
-      if (!anchor)
-        continue
-      targets.push(anchor.parentElement ?? anchor)
-    }
-    if (targets.length === 0)
+    if (!ui.open)
       return
-    // 记录打开前各宿主列已有的内联 opacity，关闭时按原值复原（而不是清空），
-    // 避免覆盖其它插件/主题预设的内联 opacity。
-    const previous = targets.map(el => el.style.opacity)
-    if (ui.open) {
-      for (const el of targets) el.style.opacity = '0'
-    }
-    return () => {
-      targets.forEach((el, index) => {
-        el.style.opacity = previous[index]
-      })
-    }
+    return concealSettingsObstructions()
   }, [ui.open])
 
   if (!ui.open)

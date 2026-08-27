@@ -15,6 +15,9 @@ export const SETTINGS_STYLE_ID = 'dsh-tauri-ui-settings-styles'
 export const SETTINGS_REGISTRANT = SETTINGS_UI_PLUGIN
 export const SETTINGS_TRIGGER_PRIORITY = -1
 
+export const SETTINGS_UNDERLAY_SLOT_KEYS = ['sidebar', 'conversation', 'details'] as const
+export const SETTINGS_EXTERNAL_OVERLAY_SELECTORS = ['[data-dsh-better-sidebar]'] as const
+
 export const RAIL_WIDTH_MIN = 264
 export const RAIL_WIDTH_MAX = 420
 export const RAIL_WIDTH_DEFAULT = 280

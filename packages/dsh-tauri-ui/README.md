@@ -9,6 +9,7 @@
 - 在 `sidebar.settings` 注册设置触发器。
 - 在 `shell.overlay` 渲染桌面化设置侧边栏。
 - 通过 `settings.section` 展示官方设置分区。
+- 设置打开期间持续隐藏并禁用宿主内容列及异步挂载的 Better Sidebar，关闭时精确恢复原状态。
 - 提供中英文的返回应用、搜索设置等文案。
 - renderer 缺少 `SlotOutlet` 时自动保留官方设置对话框。
 
