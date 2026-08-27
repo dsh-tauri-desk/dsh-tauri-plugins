@@ -2,7 +2,7 @@
 
 `dsh-tauri-worktree` 为 DSH 会话提供 Git worktree 隔离。每个工作树会话拥有独立目录，Agent 可以安全地修改代码，而不会影响本地主工作区。
 
-![dsh-tauri-worktree 工作流](public/[placeholder])
+![dsh-tauri-worktree 工作流](public/worktree.png)
 
 ## 功能
 

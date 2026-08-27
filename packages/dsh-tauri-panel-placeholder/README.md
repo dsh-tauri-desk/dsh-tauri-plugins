@@ -2,7 +2,6 @@
 
 `dsh-tauri-panel-placeholder` 是面板扩展的占位插件。它保留与正式面板包一致的加载形态，适合在开发、演示或等待真实面板实现时使用。
 
-![面板占位界面](public/[placeholder])
 
 ## 当前状态
 
