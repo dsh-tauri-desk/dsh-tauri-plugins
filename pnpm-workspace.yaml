@@ -26,10 +26,12 @@ catalogs:
     '@deepseek-ai/dsh-client-ui-layout': 0.1.1-rc.2
     '@deepseek-ai/dsh-client-ui-primitives': 0.1.1-rc.2
     '@deepseek-ai/dsh-client-ui-renderer': 0.1.1-rc.2
+    '@deepseek-ai/dsh-skill-filesystem': ^0.1.1-rc.1
   react:
     react: ^18.2.0
     react-dom: ^18.2.0
   testing:
+    happy-dom: ^20.0.0
     tinyexec: ^1.0.2
     vitest: ^4.0.15
     vitest-package-exports: ^0.1.1
@@ -40,7 +42,11 @@ catalogs:
     '@types/react-dom': ~18.3.1
   ui:
     css-render: ^0.15.14
+    dompurify: ^3.4.13
+    marked: ^18.0.10
 
+  utils:
+    smol-toml: ^1.3.1
 onlyBuiltDependencies:
   - esbuild
   - simple-git-hooks

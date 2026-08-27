@@ -1,0 +1,3 @@
+[submodule "soruce/dsh-plugin-capabilities"]
+	path = soruce/dsh-plugin-capabilities
+	url = https://github.com/qinyre/dsh-plugin-capabilities

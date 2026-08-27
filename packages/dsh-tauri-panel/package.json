@@ -1,15 +1,15 @@
 {
   "name": "dsh-tauri-panel",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.4.6",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/hairyf/dsh-tauri-plugins#readme",
+  "homepage": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hairyf/dsh-tauri-plugins.git"
+    "url": "git+https://github.com/dsh-tauri-desk/dsh-tauri-plugins.git"
   },
-  "bugs": "https://github.com/hairyf/dsh-tauri-plugins/issues",
+  "bugs": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins/issues",
   "keywords": [
     "dsh",
     "plugin",
@@ -50,6 +50,9 @@
     "start": "tsx src/index.ts",
     "test": "vitest",
     "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "happy-dom": "catalog:testing"
   },
   "publishConfig": {
     "exports": {

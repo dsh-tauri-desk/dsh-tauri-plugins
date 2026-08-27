@@ -11,7 +11,8 @@
 | [`dsh-tauri`](./packages/dsh-tauri) | Tauri 宿主导航栏与 DSH iframe 之间的消息桥 | `0.2.0` |
 | [`dsh-tauri-ui`](./packages/dsh-tauri-ui) | Tauri 风格 UI，包括设置侧边栏 | `0.1.0` |
 | [`dsh-tauri-worktree`](./packages/dsh-tauri-worktree) | 为会话创建隔离 Git worktree，并支持检出回本地 | `0.1.3` |
-| [`dsh-tauri-panel`](./packages/dsh-tauri-panel) | Tauri 面板 UI 的扩展包（当前为基础骨架） | `0.0.0` |
+| [`dsh-tauri-panel`](./packages/dsh-tauri-panel) | Tauri 面板 UI 与 `panel.protocol` 宿主 | `0.0.0` |
+| [`dsh-tauri-panel-extension`](./packages/dsh-tauri-panel-extension) | “扩展”面板：技能、技能仓库导入与 MCP 管理 | `0.0.0` |
 | [`dsh-tauri-panel-placeholder`](./packages/dsh-tauri-panel-placeholder) | 面板占位实现，用于预留集成入口 | `0.0.0` |
 
 `dsh-tauri-tsdown` 是工作区内部使用的 tsdown 配置包，不作为运行时插件发布。
@@ -19,7 +20,9 @@
 ## 开发
 
 ```bash
+
 pnpm install
+pnpm dev
 pnpm build
 pnpm test
 pnpm typecheck
