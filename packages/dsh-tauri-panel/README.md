@@ -2,7 +2,7 @@
 
 `dsh-tauri-panel` 是 Tauri 桌面端面板能力的扩展入口。当前版本提供稳定的插件包结构和客户端注入点，后续面板组件将在此基础上演进。
 
-![dsh-tauri-panel 面板](public/[placeholder])
+![dsh-tauri-panel 面板](public/panel-overview.png)
 
 ## 面板协议
 

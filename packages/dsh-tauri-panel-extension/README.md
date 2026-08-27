@@ -2,6 +2,16 @@
 
 `dsh-tauri-panel-extension` 为 [`dsh-tauri-panel`](../dsh-tauri-panel) 增加侧栏“扩展”入口，在会话内容区提供技能与 MCP 管理。
 
+## 界面预览
+
+### 技能管理
+
+![技能管理](public/skills.png)
+
+### MCP 管理
+
+![MCP 管理](public/mcp.png)
+
 ## 功能
 
 - 技能列表、搜索、来源筛选、启停、查看/编辑和打开目录。
