@@ -6,6 +6,8 @@ export interface PanelProtocol {
   ActionItem: (props: { id: string, icon?: ReactElement, onClick?: () => void, children?: ReactNode }) => ReactElement
   /** 切换会话区替换：未替换则打开 render，已替换则关闭恢复官方会话界面。 */
   renderPanelContent: (spec: { id: string, render: ComponentType<{ t?: (key: string) => string }>, locale?: string }) => void
+  /** 显式关闭当前面板内容并恢复官方会话界面。 */
+  closePanelContent: () => void
 }
 
 /** sidebar.panel.action 条目合成 props 子集（inject 提供 protocol）。 */

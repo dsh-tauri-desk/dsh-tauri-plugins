@@ -24,6 +24,16 @@ export interface PanelContentSpec {
   locale?: string
 }
 
+/** panel.protocol 的稳定服务面。 */
+export interface PanelProtocol {
+  /** 面板区条目组件：样式、折叠态与 active 态由宿主承担。 */
+  ActionItem: (props: PanelActionItemProps) => ReactElement
+  /** 切换会话区替换：当前关闭则打开，当前打开则恢复会话。 */
+  renderPanelContent: (spec: PanelContentSpec) => void
+  /** 显式恢复官方会话区；用于面板内需要跳转到会话的动作。 */
+  closePanelContent: () => void
+}
+
 /** ActionItem 合成 props：id + 图标 + 点击行为 + 文字（子插件只填这些）。 */
 export interface PanelActionItemProps {
   /** 条目唯一标识（active 态：当前内容区替换 id 与之相等则保持选中样式）。 */

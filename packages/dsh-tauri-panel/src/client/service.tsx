@@ -1,12 +1,12 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
-import type { PanelActionItemProps, PanelContentSpec } from './types'
+import type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { useSyncExternalStore } from 'react'
 import { PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, PANEL_PROTOCOL_SERVICE, PANEL_VIEW_COMPONENT_ID, PANEL_VIEW_SLOT } from './constants'
 import { NS } from './locale'
 
-export type { PanelActionItemProps, PanelContentSpec } from './types'
+export type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './types'
 
 /**
  * service.tsx — 面板协议宿主服务（协议能力，见 PROTOCOL.md）。
@@ -55,8 +55,10 @@ function ConversationSeat({ t }: { t: (key: string) => string }): ReactElement |
     <div {...{ [PANEL_DATA_ATTRIBUTES.view]: '' }} className={PANEL_CLASSES.panelView}>
       {/* 内容列：对齐官方内容列宽度（max-width var(--dsh-chat-content-width, 748px)），
           子插件零宽度关注，只负责内容自身布局（垂直方向自定）。 */}
-      <div className={PANEL_CLASSES.panelViewColumn}>
-        <View t={t} />
+      <div style={{ padding: '16px 16px 16px 8px' }}>
+        <div className={PANEL_CLASSES.panelViewColumn}>
+          <View t={t} />
+        </div>
       </div>
     </div>
   )
@@ -147,6 +149,12 @@ export function renderPanelContent(spec: PanelContentSpec): void {
     openConversation(rootCtx, spec)
 }
 
+/** 显式关闭当前面板内容；未打开面板时为空操作。 */
+export function closePanelContent(): void {
+  if (conversationSeat)
+    closeConversation()
+}
+
 /**
  * 安装宿主服务：经 ctx.reflect.provide 暴露 panel.protocol（effect 生命周期，
  * 插件卸载即注销）。不依赖 renderer 补丁（conversation 注册只走 slots
@@ -154,13 +162,20 @@ export function renderPanelContent(spec: PanelContentSpec): void {
  * @param ctx - 客户端根上下文。
  */
 export function installPanelService(ctx: Context): void {
-  rootCtx = ctx
-  const api = {
+  const api: PanelProtocol = {
     ActionItem: PanelActionItem,
     renderPanelContent,
+    closePanelContent,
   }
-  ctx.effect(
-    () => ctx.reflect.provide(PANEL_PROTOCOL_SERVICE, api),
-    'dsh-tauri-panel: panel.protocol host service',
-  )
+  ctx.effect(() => {
+    rootCtx = ctx
+    const disposeProtocol = ctx.reflect.provide(PANEL_PROTOCOL_SERVICE, api)
+    return () => {
+      if (rootCtx === ctx) {
+        closePanelContent()
+        rootCtx = undefined
+      }
+      disposeProtocol()
+    }
+  }, 'dsh-tauri-panel: panel.protocol host service')
 }
