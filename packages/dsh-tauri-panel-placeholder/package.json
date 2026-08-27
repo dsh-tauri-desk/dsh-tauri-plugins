@@ -2,6 +2,7 @@
   "name": "dsh-tauri-panel-placeholder",
   "type": "module",
   "version": "0.3.2",
+  "private": true,
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins#readme",
