@@ -45,6 +45,18 @@ interface FilesystemSkillPlugin {
   apply: (context: Context, config?: unknown) => void
 }
 
+/** Platform loader subset used to resolve DSH-owned packages from its base URL. */
+interface PlatformPluginLoader {
+  import: (name: string) => Promise<unknown>
+  unwrapExports: (exports: unknown) => unknown
+}
+
+export async function loadFilesystemSkillPlugin(loader: PlatformPluginLoader): Promise<FilesystemSkillPlugin> {
+  return loader.unwrapExports(
+    await loader.import('@deepseek-ai/dsh-skill-filesystem'),
+  ) as FilesystemSkillPlugin
+}
+
 /** The disposable fiber `ctx.plugin()` returns, as far as we use it. */
 interface PluginFiber {
   dispose: () => Promise<void>
@@ -80,9 +92,12 @@ export function apply(ctx: Context, config?: Config): void {
         chain = chain.then(async () => {
           if (disposed)
             return
-          const mod = (await import('@deepseek-ai/dsh-skill-filesystem')) as unknown as
-            (FilesystemSkillPlugin & { default?: FilesystemSkillPlugin })
-          const plugin = mod.default ?? mod
+          // Internal Desktop plugins are linked from a resource directory with
+          // no node_modules. Resolve DSH-owned packages through the platform
+          // loader (the same path used by preset rows), not native ESM relative
+          // to this linked plugin's real path.
+          const loader = (hostCtx as Context & { loader: PlatformPluginLoader }).loader
+          const plugin = await loadFilesystemSkillPlugin(loader)
           if (providerFiber !== undefined) {
             const old = providerFiber
             providerFiber = undefined
@@ -107,7 +122,14 @@ export function apply(ctx: Context, config?: Config): void {
             // Context already disposed: nothing left to mount for.
           }
         })
-        chain = chain.catch(() => undefined)
+        chain = chain.catch((error: unknown) => {
+          // A missing runtime provider dependency previously degraded into a
+          // healthy empty catalog in packaged Desktop builds. Keep routes
+          // available, but surface the actual initialization failure.
+          hostCtx.logger.error(
+            `dsh-tauri-panel-extension: failed to mount filesystem skill provider: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        })
         return chain
       }
       void remountProvider()
