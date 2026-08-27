@@ -208,6 +208,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: catalog:dsh
         version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: catalog:dsh
+        version: 0.1.1-rc.2(bfe4e14fed467ea2936ab6fa0511f5f1)
       dompurify:
         specifier: catalog:ui
         version: 3.4.14
