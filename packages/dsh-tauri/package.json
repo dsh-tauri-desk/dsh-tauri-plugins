@@ -1,7 +1,7 @@
 {
   "name": "dsh-tauri",
   "type": "module",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/dsh-tauri-desk/dsh-tauri-plugins#readme",
