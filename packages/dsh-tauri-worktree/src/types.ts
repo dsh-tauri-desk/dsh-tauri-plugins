@@ -38,10 +38,14 @@ export interface GitOptions {
 export interface EnsureOptions extends GitOptions {
   sourceSessionId?: string
   branchName?: string
+  /** 是否把源仓库已暂存（index）内容携带进新工作树；默认 false。 */
+  carryStaged?: boolean
 }
 
 export interface CheckoutOptions extends GitOptions {
   beforeRemove?: (checkout: { branch: string, projectPath: string, worktreePath: string }) => Promise<OperationResult<any>>
+  /** 是否把工作树已暂存（index）内容携带回本地检出；默认 false。 */
+  carryStaged?: boolean
 }
 
 export interface CheckoutInfo {

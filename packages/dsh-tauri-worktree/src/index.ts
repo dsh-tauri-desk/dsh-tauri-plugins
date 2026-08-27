@@ -36,7 +36,7 @@ import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
 import process from 'node:process'
 import { WORKTREE_API_PREFIX, WORKTREE_BRANCH_NAME_PATTERN, WORKTREE_SECTION_ORDER } from './constants.js'
-import { git, gitToplevel, headSubject, projectDirname, shortHead } from './git.js'
+import { applyStagedPatch, carryStagedChanges, git, gitToplevel, headSubject, projectDirname, shortHead, stagedPatch } from './git.js'
 import { routeHandler } from './http.js'
 import {
   clearPendingCheckoutContext,
@@ -187,6 +187,20 @@ export async function ensureWorktree(
   if (!add.ok)
     return { ok: false, error: `创建工作树失败：${add.error}` }
 
+  // 可选携带源仓库暂存内容：工作树默认从 HEAD 干净检出，用户已暂存的改动不会出现；
+  // carryStaged 打开时把 index 状态搬进新工作树（只搬已暂存，未暂存/未跟踪不携带）。
+  // 失败则回滚刚创建的 worktree，避免留下「创建成功但内容不完整」的半成品。
+  if (opts.carryStaged === true) {
+    const carried = await carryStagedChanges(root, path, { signal: opts.signal })
+    if (!carried.ok) {
+      await git(['worktree', 'remove', '--force', path], root, { signal: opts.signal })
+      await git(['worktree', 'prune'], root, { signal: opts.signal })
+      return { ok: false, error: `携带暂存内容失败，工作树已回滚：${carried.error}` }
+    }
+    if (carried.carried.length > 0)
+      log.push(`Carried staged changes (${carried.carried.length} file(s)) from the source repository`)
+  }
+
   // UI 预选流程保持 detached；Agent 工具提供 branch_name 时直接在 dsh/* 分支工作。
   const head = await git(['rev-parse', '--abbrev-ref', 'HEAD'], path)
   const activeBranch = head.ok ? head.out : (branchName || '(detached)')
@@ -281,6 +295,18 @@ export async function checkoutToLocal(
   if (!worktreeHead.ok)
     return { ok: false, error: `读取工作树 HEAD 失败：${worktreeHead.error}` }
 
+  // 1.5) carryStaged 时先在工作树侧捕获暂存补丁（只读，失败可安全中止）；真正的应用要
+  //      等本地检出成功之后，避免把补丁落到错误的基底上。记录检出前分支用于失败回滚。
+  const prev = await git(['rev-parse', '--abbrev-ref', 'HEAD'], root, { signal: opts.signal })
+  const prevBranch = prev.ok ? prev.out || 'HEAD' : 'HEAD'
+  // 显式标注联合类型，保证 `ok` 判别后两端各自可访问 error/patch（含 ok:boolean 的
+  // 泛化联合无法据此收窄到 error 分支）。
+  const carriedPatch: OperationResult<{ patch: string }> = opts.carryStaged === true
+    ? await stagedPatch(binding.worktreePath, { signal: opts.signal })
+    : { ok: true, patch: '' }
+  if (!carriedPatch.ok)
+    return { ok: false, error: `读取工作树暂存内容失败：${carriedPatch.error}` }
+
   // 2) 只创建新分支，不静默覆盖用户已有的分支指针。
   const exists = (await git(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], root, { signal: opts.signal })).ok
   if (exists)
@@ -293,6 +319,16 @@ export async function checkoutToLocal(
   const check = await git(['checkout', branch], root, { signal: opts.signal })
   if (!check.ok)
     return { ok: false, error: `切换到本地分支失败：${check.error}` }
+
+  // 3.5) carryStaged：把工作树已暂存内容应用到本地检出，只动补丁涉及的路径，不覆盖
+  //      本地其他未提交改动。失败时回滚到检出前分支并保留工作树，便于重试。
+  if (carriedPatch.patch.trim()) {
+    const applied = await applyStagedPatch(root, carriedPatch.patch, { signal: opts.signal })
+    if (!applied.ok) {
+      await git(['checkout', prevBranch], root, { signal: opts.signal })
+      return { ok: false, error: `携带暂存内容失败，已回滚到 ${prevBranch}，工作树保留以便重试：${applied.error}` }
+    }
+  }
 
   // Preserve the worktree until the local session has been created successfully.
   if (opts.beforeRemove) {
@@ -397,7 +433,7 @@ export async function checkoutToLocalAndHandback(
   ctx: HostContext,
   worktreesRoot: string,
   params: WorktreeParams,
-  opts: { signal?: AbortSignal } = {},
+  opts: CheckoutOptions = {},
 ): Promise<OperationResult<{ branch: string, projectPath: string, targetSessionId?: string }>> {
   const sessionId = String(params.sessionId ?? '')
   let targetSessionId
@@ -540,6 +576,13 @@ export function createToolSet(
             type: 'string',
             description: 'New worktree branch, for example `dsh/feature-xyz`; the `dsh/` prefix is added when omitted.',
           },
+          carry_staged: {
+            type: 'boolean',
+            description: 'Whether to carry the source repository\'s staged (index) changes into the new worktree, '
+              + 'so the isolated session starts from the same staged state. Only staged changes are carried; '
+              + 'unstaged and untracked changes stay in the source repository. Default false.',
+            default: false,
+          },
         },
         required: ['branch_name'],
       },
@@ -574,6 +617,7 @@ export function createToolSet(
         const created = await ensureWorktree(ctx, worktreesRoot, projectPath, targetSessionId, {
           sourceSessionId: sourceSession.id,
           branchName: String(args.branch_name ?? ''),
+          carryStaged: args.carry_staged === true,
           signal: exec?.signal,
         })
         if (!created.ok)
@@ -612,6 +656,13 @@ export function createToolSet(
             type: 'string',
             description: 'Local branch name, such as `dsh/feature-xyz` or `feature-xyz`; used exactly as provided.',
           },
+          carry_staged: {
+            type: 'boolean',
+            description: 'Whether to carry the worktree\'s staged (index) changes into the checked-out local branch '
+              + 'before the worktree is removed. Committed work is always carried; staged-only work would otherwise '
+              + 'be lost with the removed worktree. Default false.',
+            default: false,
+          },
         },
         required: ['worktree_hash_dirname', 'branch_name'],
       },
@@ -638,7 +689,10 @@ export function createToolSet(
           worktree_hash_dirname: String(args.worktree_hash_dirname ?? ''),
           sessionId: exec?.agent?.session?.id,
           branch_name: String(args.branch_name ?? ''),
-        }, { signal: exec?.signal })
+        }, {
+          signal: exec?.signal,
+          carryStaged: args.carry_staged === true,
+        })
         if (!r.ok)
           return { ok: false, error: r.error }
         return { ok: true, branch: r.branch, projectPath: r.projectPath }
@@ -694,7 +748,10 @@ export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
           return [400, { error: '缺少 sessionId' }]
         const sourceSession = findSession(ctx, sourceSessionId)
         const projectPath = await resolveProjectPath(ctx, sourceSession)
-        const r = await ensureWorktree(ctx, worktreesRoot, projectPath, sessionId, { sourceSessionId })
+        const r = await ensureWorktree(ctx, worktreesRoot, projectPath, sessionId, {
+          sourceSessionId,
+          carryStaged: body.carryStaged === true,
+        })
         if (!r.ok)
           return [400, { error: r.error }]
         return [200, {
@@ -733,11 +790,12 @@ export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
       path: `${API_PREFIX}/checkout`,
       handler: routeHandler(async (body) => {
         // UI 检出：git 检出 + 把工作树会话完整历史带回本地新会话（targetSessionId）。
+        // body.carryStaged 可选：把工作树已暂存内容携带回本地检出。
         const r = await checkoutToLocalAndHandback(ctx, worktreesRoot, {
           sessionId: String(body.sessionId ?? ''),
           worktree_hash_dirname: String(body.worktreeHashDirname ?? ''),
           branch_name: String(body.branchName ?? ''),
-        })
+        }, { carryStaged: body.carryStaged === true })
         if (!r.ok)
           return [400, { error: r.error }]
         return [200, {
