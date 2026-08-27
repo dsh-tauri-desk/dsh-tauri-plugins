@@ -5,5 +5,7 @@ import { defineDshConfig } from 'dsh-tauri-tsdown'
 // client injections, so leaving these imports external makes runtime require()
 // fail even though the packages exist in the host profile.
 export default defineDshConfig({
-  noExternal: ['dompurify', 'marked', 'css-render'],
+  client: {
+    noExternal: ['dompurify', 'marked'],
+  },
 })

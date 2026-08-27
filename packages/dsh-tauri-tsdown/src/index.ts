@@ -20,19 +20,24 @@ export const dshExternal = [
   /^@deepseek-ai\//,
 ]
 
-export function defineDshConfig(options: UserConfig = {}): UserConfig[] {
+interface DshConfig {
+  server?: UserConfig
+  client?: UserConfig
+}
+
+export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
   const common: UserConfig = {
     outDir: 'dist',
     format: 'esm',
     outExtensions: () => ({ js: '.js' }),
     publint: true,
     external: dshExternal,
-    ...options,
   }
 
   return [
     {
       ...common,
+      ...options.server,
       entry: { index: 'src/index.ts' },
       dts: true,
       sourcemap: false,
@@ -40,6 +45,7 @@ export function defineDshConfig(options: UserConfig = {}): UserConfig[] {
     },
     {
       ...common,
+      ...options.client,
       entry: { client: 'src/client/index.ts' },
       // Client bundles are classic scripts consumed by dsh-client-modules.
       // CJS output is required so its exports remain inside the loader factory.

@@ -5,6 +5,7 @@ ignoreWorkspaceRootCheck: true
 shellEmulator: true
 
 trustPolicy: no-downgrade
+trustPolicyExclude: [chokidar]
 packages:
   - packages/*
 catalogs:

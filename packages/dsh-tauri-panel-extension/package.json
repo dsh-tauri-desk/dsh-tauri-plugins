@@ -61,8 +61,6 @@
     "@deepseek-ai/cordis": "catalog:dsh"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
-    "css-render": "catalog:ui",
     "dompurify": "catalog:ui",
     "marked": "catalog:ui",
     "smol-toml": "catalog:utils",
