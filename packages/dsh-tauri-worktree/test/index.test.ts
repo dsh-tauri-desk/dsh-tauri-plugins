@@ -98,6 +98,180 @@ describe('dsh-tauri-worktree carry staged', () => {
     }
   })
 
+  it('checkoutToLocal hands an owned branch back without creating a duplicate branch', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'wt-owned-handoff-'))
+    try {
+      const repo = await makeRepo(join(rootDir, 'repo'))
+      const worktreesRoot = join(rootDir, 'worktrees')
+      const branch = 'dsh/owned-feature'
+      const created = await ensureWorktree({}, worktreesRoot, repo, 'sess-owned', {
+        sourceSessionId: 'sess-0',
+        branchName: branch,
+      })
+      if (!created.ok)
+        throw new Error(created.error)
+      const wt = created.binding.worktreePath
+      await writeFile(join(wt, 'committed.txt'), 'owned\n')
+      await runGit(wt, ['add', 'committed.txt'])
+      await runGit(wt, ['commit', '-q', '-m', 'owned work'])
+      const worktreeHead = await runGit(wt, ['rev-parse', 'HEAD'])
+
+      const result = await checkoutToLocal({}, worktreesRoot, {
+        sessionId: 'sess-owned',
+        branch_name: branch,
+      })
+      if (!result.ok)
+        throw new Error(result.error)
+
+      expect(await runGit(repo, ['branch', '--show-current'])).toBe(branch)
+      expect(await runGit(repo, ['rev-parse', 'HEAD'])).toBe(worktreeHead)
+      expect((await runGit(repo, ['for-each-ref', '--format=%(refname:short)', 'refs/heads/'])).split('\n').sort()).toEqual([
+        branch,
+        'main',
+      ])
+      expect(await runGit(repo, ['worktree', 'list'])).not.toContain(wt)
+    }
+    finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  }, 10_000)
+
+  it('checkoutToLocal rejects a dirty local repository before releasing the owned branch', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'wt-owned-rollback-'))
+    try {
+      const repo = await makeRepo(join(rootDir, 'repo'))
+      const worktreesRoot = join(rootDir, 'worktrees')
+      const branch = 'dsh/rollback-feature'
+      const created = await ensureWorktree({}, worktreesRoot, repo, 'sess-rollback', {
+        sourceSessionId: 'sess-0',
+        branchName: branch,
+      })
+      if (!created.ok)
+        throw new Error(created.error)
+      const wt = created.binding.worktreePath
+      await writeFile(join(wt, 'a.txt'), 'feature\n')
+      await runGit(wt, ['add', 'a.txt'])
+      await runGit(wt, ['commit', '-q', '-m', 'conflicting feature work'])
+      await writeFile(join(repo, 'a.txt'), 'local dirty\n')
+
+      const result = await checkoutToLocal({}, worktreesRoot, {
+        sessionId: 'sess-rollback',
+        branch_name: branch,
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok)
+        throw new Error('expected checkout failure')
+      expect(result.error).toContain('本地主工作区存在未提交改动')
+      expect(await runGit(repo, ['branch', '--show-current'])).toBe('main')
+      expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('local dirty\n')
+      expect(await runGit(wt, ['branch', '--show-current'])).toBe(branch)
+      expect(await runGit(repo, ['worktree', 'list', '--porcelain'])).toContain(`branch refs/heads/${branch}`)
+    }
+    finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
+  it('checkoutToLocal rolls an owned branch back when handback preparation fails', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'wt-handback-rollback-'))
+    try {
+      const repo = await makeRepo(join(rootDir, 'repo'))
+      const worktreesRoot = join(rootDir, 'worktrees')
+      const branch = 'dsh/handback-rollback'
+      const created = await ensureWorktree({}, worktreesRoot, repo, 'sess-handback', {
+        sourceSessionId: 'sess-0',
+        branchName: branch,
+      })
+      if (!created.ok)
+        throw new Error(created.error)
+      const wt = created.binding.worktreePath
+      await writeFile(join(wt, 'committed.txt'), 'owned\n')
+      await runGit(wt, ['add', 'committed.txt'])
+      await runGit(wt, ['commit', '-q', '-m', 'owned work'])
+
+      const result = await checkoutToLocal({}, worktreesRoot, {
+        sessionId: 'sess-handback',
+        branch_name: branch,
+      }, {
+        beforeRemove: async () => ({ ok: false, error: 'injected handback failure' }),
+      })
+
+      expect(result.ok).toBe(false)
+      if (result.ok)
+        throw new Error('expected checkout failure')
+      expect(result.error).toContain('injected handback failure')
+      expect(await runGit(repo, ['branch', '--show-current'])).toBe('main')
+      expect(await runGit(wt, ['branch', '--show-current'])).toBe(branch)
+      expect(await runGit(repo, ['worktree', 'list', '--porcelain'])).toContain(`branch refs/heads/${branch}`)
+    }
+    finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
+  it('checkoutToLocal still rejects an unrelated existing branch', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'wt-existing-branch-'))
+    try {
+      const repo = await makeRepo(join(rootDir, 'repo'))
+      const worktreesRoot = join(rootDir, 'worktrees')
+      const created = await ensureWorktree({}, worktreesRoot, repo, 'sess-existing', {
+        sourceSessionId: 'sess-0',
+      })
+      if (!created.ok)
+        throw new Error(created.error)
+      await runGit(repo, ['branch', 'existing-target'])
+
+      const result = await checkoutToLocal({}, worktreesRoot, {
+        sessionId: 'sess-existing',
+        branch_name: 'existing-target',
+      })
+
+      expect(result).toEqual({
+        ok: false,
+        error: '本地分支已存在且不属于当前工作树，为避免覆盖其提交而拒绝检出：existing-target',
+      })
+      expect(await runGit(repo, ['branch', '--show-current'])).toBe('main')
+      expect(await runGit(created.binding.worktreePath, ['rev-parse', 'HEAD'])).toBe(await runGit(repo, ['rev-parse', 'main']))
+    }
+    finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
+  it('checkoutToLocal rejects unsupported worktree changes without deleting them', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'wt-dirty-reject-'))
+    try {
+      const repo = await makeRepo(join(rootDir, 'repo'))
+      const worktreesRoot = join(rootDir, 'worktrees')
+      const created = await ensureWorktree({}, worktreesRoot, repo, 'sess-dirty', {
+        sourceSessionId: 'sess-0',
+      })
+      if (!created.ok)
+        throw new Error(created.error)
+      const wt = created.binding.worktreePath
+      await writeFile(join(wt, 'keep.txt'), 'unstaged\n')
+      await writeFile(join(wt, 'untracked.txt'), 'untracked\n')
+
+      const result = await checkoutToLocal({}, worktreesRoot, {
+        sessionId: 'sess-dirty',
+        branch_name: 'dsh/dirty-feature',
+      }, { carryStaged: true })
+
+      expect(result.ok).toBe(false)
+      if (result.ok)
+        throw new Error('expected checkout failure')
+      expect(result.error).toContain('未暂存或未跟踪改动')
+      expect(await readFile(join(wt, 'keep.txt'), 'utf8')).toBe('unstaged\n')
+      expect(await readFile(join(wt, 'untracked.txt'), 'utf8')).toBe('untracked\n')
+      expect(await runGit(repo, ['branch', '--show-current'])).toBe('main')
+      await expect(runGit(repo, ['rev-parse', '--verify', 'refs/heads/dsh/dirty-feature'])).rejects.toThrow()
+    }
+    finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
   it('checkoutToLocal carries staged changes into the local checkout when carryStaged: true', async () => {
     const rootDir = await mkdtemp(join(tmpdir(), 'wt-co-carry-'))
     try {
@@ -139,7 +313,7 @@ describe('dsh-tauri-worktree carry staged', () => {
     }
   })
 
-  it('checkoutToLocal carries only committed work by default', async () => {
+  it('checkoutToLocal refuses to discard staged work when carryStaged is disabled', async () => {
     const rootDir = await mkdtemp(join(tmpdir(), 'wt-co-nocarry-'))
     try {
       const repo = await makeRepo(join(rootDir, 'repo'))
@@ -161,14 +335,16 @@ describe('dsh-tauri-worktree carry staged', () => {
         sessionId: 'sess-4',
         branch_name: 'dsh/feature-y',
       })
-      if (!result.ok)
-        throw new Error(result.error)
 
-      // 已提交改动带回，暂存改动不带回
-      expect(await readFile(join(repo, 'committed.txt'), 'utf8')).toBe('c1\n')
-      expect(await readFile(join(repo, 'a.txt'), 'utf8')).toBe('v1\n')
-      expect(await runGit(repo, ['diff', '--cached', '--name-only'])).toBe('')
+      expect(result).toEqual({
+        ok: false,
+        error: '隔离工作树存在已暂存改动；请启用 carry_staged 或先提交这些改动再检出',
+      })
+      expect(await runGit(repo, ['branch', '--show-current'])).toBe('main')
       expect(await runGit(repo, ['status', '--short'])).toBe('')
+      expect(await readFile(join(wt, 'a.txt'), 'utf8')).toBe('v9-staged\n')
+      expect(await runGit(wt, ['diff', '--cached', '--name-only'])).toBe('a.txt')
+      await expect(runGit(repo, ['rev-parse', '--verify', 'refs/heads/dsh/feature-y'])).rejects.toThrow()
     }
     finally {
       await rm(rootDir, { recursive: true, force: true })

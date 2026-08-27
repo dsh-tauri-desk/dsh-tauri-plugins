@@ -287,18 +287,34 @@ export async function checkoutToLocal(
   const branch = String(params.branch_name ?? binding.branchName ?? '').trim()
   if (!branch || branch.endsWith('/'))
     return { ok: false, error: `分支名不能为空或以 / 结尾：${branch}` }
-  if (!BRANCH_NAME_RE.test(branch))
+  const validBranch = await git(['check-ref-format', '--branch', branch], root, { signal: opts.signal })
+  if (!validBranch.ok)
     return { ok: false, error: `非法分支名：${branch}` }
 
-  // 1) 工作树 HEAD 提交。
+  // 1) 在改动 ref 前完成安全预检。主工作区必须干净，避免 git checkout 把本地改动
+  //    静默带到功能分支；隔离工作树仅允许 committed 内容和显式携带的 staged 内容。
+  const mainStatus = await git(['status', '--porcelain=v1'], root, { signal: opts.signal })
+  if (!mainStatus.ok)
+    return { ok: false, error: `读取本地主工作区状态失败：${mainStatus.error}` }
+  if (mainStatus.out)
+    return { ok: false, error: '本地主工作区存在未提交改动；请先提交或清理后再检出工作树' }
+  const worktreeStatus = await git(['status', '--porcelain=v1'], binding.worktreePath, { signal: opts.signal })
+  if (!worktreeStatus.ok)
+    return { ok: false, error: `读取隔离工作树状态失败：${worktreeStatus.error}` }
+  const dirtyRows = worktreeStatus.out.split('\n').filter(Boolean)
+  const unsupportedRows = dirtyRows.filter(row => !/^[ACDMRT] /.test(row))
+  if (unsupportedRows.length > 0)
+    return { ok: false, error: '隔离工作树存在未暂存或未跟踪改动；请先提交这些改动再检出，避免删除工作树时丢失内容' }
+  if (dirtyRows.length > 0 && opts.carryStaged !== true)
+    return { ok: false, error: '隔离工作树存在已暂存改动；请启用 carry_staged 或先提交这些改动再检出' }
+
   const worktreeHead = await git(['rev-parse', 'HEAD'], binding.worktreePath, { signal: opts.signal })
   if (!worktreeHead.ok)
     return { ok: false, error: `读取工作树 HEAD 失败：${worktreeHead.error}` }
-
-  // 1.5) carryStaged 时先在工作树侧捕获暂存补丁（只读，失败可安全中止）；真正的应用要
-  //      等本地检出成功之后，避免把补丁落到错误的基底上。记录检出前分支用于失败回滚。
-  const prev = await git(['rev-parse', '--abbrev-ref', 'HEAD'], root, { signal: opts.signal })
-  const prevBranch = prev.ok ? prev.out || 'HEAD' : 'HEAD'
+  const prev = await git(['symbolic-ref', '--quiet', '--short', 'HEAD'], root, { signal: opts.signal })
+  if (!prev.ok)
+    return { ok: false, error: '本地主工作区当前处于 detached HEAD；请先切换到本地分支再检出工作树' }
+  const prevBranch = prev.out
   // 显式标注联合类型，保证 `ok` 判别后两端各自可访问 error/patch（含 ok:boolean 的
   // 泛化联合无法据此收窄到 error 分支）。
   const carriedPatch: OperationResult<{ patch: string }> = opts.carryStaged === true
@@ -307,34 +323,91 @@ export async function checkoutToLocal(
   if (!carriedPatch.ok)
     return { ok: false, error: `读取工作树暂存内容失败：${carriedPatch.error}` }
 
-  // 2) 只创建新分支，不静默覆盖用户已有的分支指针。
-  const exists = (await git(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], root, { signal: opts.signal })).ok
-  if (exists)
-    return { ok: false, error: `本地分支已存在，为避免覆盖其提交而拒绝检出：${branch}` }
-  const created = await git(['branch', branch, worktreeHead.out], root, { signal: opts.signal })
-  if (!created.ok)
-    return { ok: false, error: `创建本地分支失败：${created.error}` }
+  // 2) Agent 创建的工作树已经拥有其功能分支。先把工作树 detach 以释放该分支，再在
+  //    本地主工作区切到同一个现有分支；不能把“分支已存在”误判成冲突并复制第二个分支。
+  //    其他已存在分支仍安全拒绝，绝不静默重置用户分支指针。
+  const branchRef = await git(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`], root, { signal: opts.signal })
+  const handsOffOwnedBranch = binding.ownsBranch && binding.branchName === branch
+  let detachedOwnedBranch = false
+  let createdBranch = false
+  if (handsOffOwnedBranch) {
+    if (!branchRef.ok)
+      return { ok: false, error: `工作树拥有的本地分支不存在，拒绝重建以避免覆盖状态：${branch}` }
+    if (branchRef.out !== worktreeHead.out)
+      return { ok: false, error: `工作树 HEAD 与其本地分支指针不一致，拒绝检出：${branch}` }
+    const activeBranch = await git(['symbolic-ref', '--quiet', '--short', 'HEAD'], binding.worktreePath, { signal: opts.signal })
+    if (!activeBranch.ok || activeBranch.out !== branch)
+      return { ok: false, error: `工作树未签出其记录的本地分支，拒绝检出：${branch}` }
+    const detached = await git(['checkout', '--detach'], binding.worktreePath, { signal: opts.signal })
+    if (!detached.ok)
+      return { ok: false, error: `释放工作树分支失败：${detached.error}` }
+    detachedOwnedBranch = true
+  }
+  else {
+    if (branchRef.ok)
+      return { ok: false, error: `本地分支已存在且不属于当前工作树，为避免覆盖其提交而拒绝检出：${branch}` }
+    const created = await git(['branch', branch, worktreeHead.out], root, { signal: opts.signal })
+    if (!created.ok)
+      return { ok: false, error: `创建本地分支失败：${created.error}` }
+    createdBranch = true
+  }
 
-  // 3) 本地仓库切到该分支。
+  const restoreSourceBranch = async (): Promise<string> => {
+    if (!detachedOwnedBranch)
+      return ''
+    const restored = await git(['checkout', branch], binding.worktreePath)
+    return restored.ok ? '' : `；工作树分支自动恢复失败：${restored.error}`
+  }
+  const removeCreatedBranch = async (): Promise<string> => {
+    if (!createdBranch)
+      return ''
+    const removed = await git(['branch', '-D', branch], root)
+    return removed.ok ? '' : `；新建分支自动清理失败：${removed.error}`
+  }
+  const rollbackHandoff = async (resetTarget = false): Promise<string> => {
+    const failures: string[] = []
+    if (resetTarget) {
+      const reset = await git(['reset', '--hard', 'HEAD'], root)
+      if (!reset.ok)
+        failures.push(`清理目标分支暂存状态失败：${reset.error}`)
+    }
+    const switchedBack = await git(['checkout', prevBranch], root, { signal: opts.signal })
+    if (!switchedBack.ok) {
+      failures.push(`恢复本地主分支失败：${switchedBack.error}`)
+    }
+    else {
+      const sourceRecovery = detachedOwnedBranch ? await restoreSourceBranch() : await removeCreatedBranch()
+      if (sourceRecovery)
+        failures.push(sourceRecovery.replace(/^；/, ''))
+    }
+    return failures.length > 0 ? `；${failures.join('；')}` : ''
+  }
+
+  // 3) 本地主工作区切到移交或新建的分支。失败时恢复原工作树的分支占用，或清理本次
+  //    新建的分支，保证重试不会因残留状态再次失败。
   const check = await git(['checkout', branch], root, { signal: opts.signal })
-  if (!check.ok)
-    return { ok: false, error: `切换到本地分支失败：${check.error}` }
+  if (!check.ok) {
+    const recovery = detachedOwnedBranch ? await restoreSourceBranch() : await removeCreatedBranch()
+    return { ok: false, error: `切换到本地分支失败：${check.error}${recovery}` }
+  }
 
   // 3.5) carryStaged：把工作树已暂存内容应用到本地检出，只动补丁涉及的路径，不覆盖
   //      本地其他未提交改动。失败时回滚到检出前分支并保留工作树，便于重试。
   if (carriedPatch.patch.trim()) {
     const applied = await applyStagedPatch(root, carriedPatch.patch, { signal: opts.signal })
     if (!applied.ok) {
-      await git(['checkout', prevBranch], root, { signal: opts.signal })
-      return { ok: false, error: `携带暂存内容失败，已回滚到 ${prevBranch}，工作树保留以便重试：${applied.error}` }
+      const recovery = await rollbackHandoff(true)
+      return { ok: false, error: `携带暂存内容失败，工作树已保留：${applied.error}${recovery}` }
     }
   }
 
   // Preserve the worktree until the local session has been created successfully.
   if (opts.beforeRemove) {
     const prepared = await opts.beforeRemove({ branch, projectPath: root, worktreePath: binding.worktreePath })
-    if (!prepared.ok)
-      return { ok: false, error: `Failed to create the local handback session; the worktree was preserved: ${prepared.error}` }
+    if (!prepared.ok) {
+      const recovery = await rollbackHandoff(Boolean(carriedPatch.patch.trim()))
+      return { ok: false, error: `Failed to create the local handback session; the worktree was preserved: ${prepared.error}${recovery}` }
+    }
   }
 
   // 4) 注销旧版本可能创建的普通 Workspace 记录，再移除工作树。
