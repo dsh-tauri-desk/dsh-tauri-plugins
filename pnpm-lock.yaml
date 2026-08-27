@@ -232,7 +232,11 @@ importers:
         specifier: catalog:cli
         version: 5.9.3
 
-  packages/dsh-tauri-ui: {}
+  packages/dsh-tauri-ui:
+    devDependencies:
+      happy-dom:
+        specifier: catalog:testing
+        version: 20.11.8
 
   packages/dsh-tauri-worktree: {}
 

@@ -51,6 +51,9 @@
     "test": "vitest",
     "typecheck": "tsc"
   },
+  "devDependencies": {
+    "happy-dom": "catalog:testing"
+  },
   "publishConfig": {
     "exports": {
       ".": "./dist/index.js",
