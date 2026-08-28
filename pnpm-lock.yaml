@@ -226,6 +226,8 @@ importers:
 
   packages/dsh-tauri-panel-placeholder: {}
 
+  packages/dsh-tauri-session: {}
+
   packages/dsh-tauri-tsdown:
     devDependencies:
       tsdown:
