@@ -2,12 +2,12 @@
  * archive-sort.ts — 归档列表的分组与排序纯函数。
  *
  * 需求规则：
- *   - 排序方式（更新时间 / 创建时间 / 按字母排序）同时影响「组」与「组内聊天」；
+ *   - 排序方式（更新时间 / 创建时间 / 按字母排序）同时影响「组」与「组内聊天」
+ *     （组与聊天两级都排序）；
  *   - 组的排序键取自其成员按当前排序方式聚合出的值（更新时间取组内最新、
- *     创建时间取组内最早、字母取组内标题首位）；
- *   - “按子项目排序”模式按工作区标题字母序排组；“按组排序”模式按成员聚合值排组。
+ *     创建时间取组内最早、字母取组内标题首位）。
  */
-import type { ArchiveGroup, ArchiveRow, ArchiveSort } from './types'
+import type { ArchiveRow, ArchiveSort } from './types'
 
 /** 组内聊天排序后的行。 */
 export interface ArchiveGroupRow {
@@ -49,14 +49,13 @@ function groupSortValue(rows: ArchiveRow[], sort: ArchiveSort): number | string 
 }
 
 /**
- * 把归档行按工作区分组并按排序方式排好，再按分组方式排组。
+ * 把归档行按工作区分组并按排序方式排好（组与组内聊天两级都按排序方式排）。
  * @param rows - 合并后的归档行（未过滤）。
  * @param sort - 排序方式（影响组内与组排名）。
- * @param group - 排组方式：'group' | 'project'。
  * @param ungroupedLabel - 「未分组」桶的标题。
  * @returns 有序的组列表（组内已按排序方式排好）。
  */
-export function groupArchive(rows: ArchiveRow[], sort: ArchiveSort, group: ArchiveGroup, ungroupedLabel: string): ArchiveGroupRow[] {
+export function groupArchive(rows: ArchiveRow[], sort: ArchiveSort, ungroupedLabel: string): ArchiveGroupRow[] {
   const buckets = new Map<string, ArchiveRow[]>()
   for (const row of rows) {
     const key = row.workspaceId ?? 'ungrouped'
@@ -78,28 +77,17 @@ export function groupArchive(rows: ArchiveRow[], sort: ArchiveSort, group: Archi
     })
   }
 
-  // project 模式按工作区标题字母序排组（未分组桶固定在末尾）；group 模式按成员聚合值
-  // 排组（时间降序、字母升序）。
-  if (group === 'project') {
-    groups.sort((a, b) => a.title.localeCompare(b.title))
-    const ungrouped = groups.findIndex(g => g.id === 'ungrouped')
-    if (ungrouped !== -1 && ungrouped !== groups.length - 1) {
-      const [u] = groups.splice(ungrouped, 1)
-      groups.push(u)
+  // 组按成员聚合值排（时间降序、字母升序），与组内聊天同一排序口径。
+  groups.sort((a, b) => {
+    const av = groupSortValue(a.rows, sort)
+    const bv = groupSortValue(b.rows, sort)
+    if (sort === 'title') {
+      const as = typeof av === 'string' ? av : ''
+      const bs = typeof bv === 'string' ? bv : ''
+      return as.localeCompare(bs)
     }
-  }
-  else {
-    groups.sort((a, b) => {
-      const av = groupSortValue(a.rows, sort)
-      const bv = groupSortValue(b.rows, sort)
-      if (sort === 'title') {
-        const as = typeof av === 'string' ? av : ''
-        const bs = typeof bv === 'string' ? bv : ''
-        return as.localeCompare(bs)
-      }
-      return (bv as number) - (av as number)
-    })
-  }
+    return (bv as number) - (av as number)
+  })
 
   return groups
 }

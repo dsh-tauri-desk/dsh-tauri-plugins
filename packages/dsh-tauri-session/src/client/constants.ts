@@ -24,7 +24,9 @@ export const SESSION_CLASSES = {
   deleteAll: 'dsh-tauri-session-delete-all',
   toolbar: 'dsh-tauri-session-toolbar',
   search: 'dsh-tauri-session-search',
-  select: 'dsh-tauri-session-select',
+  menuSelect: 'dsh-tauri-session-menu-select',
+  menuSelectLabel: 'dsh-tauri-session-menu-select-label',
+  menuSelectChevron: 'dsh-tauri-session-menu-select-chevron',
   groups: 'dsh-tauri-session-groups',
   group: 'dsh-tauri-session-group',
   groupHeader: 'dsh-tauri-session-group-header',
@@ -32,18 +34,34 @@ export const SESSION_CLASSES = {
   groupCount: 'dsh-tauri-session-group-count',
   list: 'dsh-tauri-session-list',
   row: 'dsh-tauri-session-row',
+  rowMain: 'dsh-tauri-session-row-main',
   rowTitle: 'dsh-tauri-session-row-title',
-  rowMeta: 'dsh-tauri-session-row-meta',
+  rowTime: 'dsh-tauri-session-row-time',
+  rowActions: 'dsh-tauri-session-row-actions',
+  rowDelete: 'dsh-tauri-session-row-delete',
   unarchive: 'dsh-tauri-session-unarchive',
+  deleteBtn: 'dsh-tauri-session-delete-btn',
+  deleteBtnText: 'dsh-tauri-session-delete-btn-text',
   empty: 'dsh-tauri-session-empty',
   error: 'dsh-tauri-session-error',
+  toastView: 'dsh-tauri-session-toast-view',
+  archiveMenuItem: 'dsh-tauri-session-archive-menu-item',
 } as const
 
-/** Sync strings for matching the official workspace delete action (zh/en). */
+/**
+ * Sync strings for matching the official workspace-row menu's delete item
+ * (zh/en). The item is a primitives `Menu` row rendered in a portal, so the
+ * patch scans `document.body`, not the sidebar.
+ */
 export const DELETE_WORKSPACE_LABELS: readonly string[] = ['删除工作区', 'Delete workspace']
-/** Replacement label. */
-export const ARCHIVE_WORKSPACE_LABELS: readonly string[] = ['归档工作区', 'Archive workspace']
 
+/** Official primitives menu row selector (portal). */
+export const MENU_ITEM_SELECTOR = 'button[role="menuitem"]'
+
+/** Sidebar shell seat holding the official WorkspaceBrowser. */
 export const SIDEBAR_SELECTOR = '[data-slot="sidebar"]'
-export const SESSION_ROW_ATTRIBUTE = 'data-dsh-tauri-session-id'
+
+/** Attribute marking a project-row ellipsis whose click records the open menu's group. */
+export const WORKSPACE_MENU_ANCHOR_ATTRIBUTE = 'data-dsh-tauri-session-menu-anchor'
+/** Attribute marking a portal delete item already rewritten into the archive action. */
 export const WORKSPACE_ACTION_ATTRIBUTE = 'data-dsh-tauri-session-archive-action'

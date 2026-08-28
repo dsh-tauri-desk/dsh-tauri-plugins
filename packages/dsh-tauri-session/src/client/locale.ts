@@ -20,9 +20,6 @@ const DICT_ZH = {
   sortUpdatedAt: '更新时间',
   sortCreatedAt: '创建时间',
   sortTitle: '按字母排序',
-  groupLabel: '分组',
-  groupByGroup: '按组排序',
-  groupByProject: '按子项目排序',
   allProjects: '所有项目',
   ungrouped: '未分组',
   unarchive: '取消归档',
@@ -30,7 +27,20 @@ const DICT_ZH = {
   noResults: '没有匹配的聊天',
   loadFailed: '加载失败',
   chats: '个聊天',
-  archiveWorkspace: '归档工作区',
+  archiveWorkspace: '归档会话',
+  archiveWorkspaceTitle: '归档 {count} 个会话？',
+  archiveWorkspaceDescription: '这会将 {workspace} 中的会话归档。之后你可以在已归档的会话中找到它们',
+  archiveWorkspaceConfirm: '全部归档',
+  cancel: '取消',
+  deleteConfirm: '删除',
+  deleteRowAria: '删除此会话',
+  deleteSingleTitle: '删除已归档聊天？',
+  deleteSingleBody: '这将永久删除已归档聊天',
+  deleteAllTitle: '删除所有已归档本地聊天？',
+  deleteAllBody: '这将永久删除所有本地已归档聊天记录',
+  loading: '处理中…',
+  unarchivedToast: '对话已取消归档',
+  view: '查看',
 } as const satisfies Record<LocaleKey, string>
 
 /** en 字典，与 zh 键集完全一致（locale 运行时强制双语平衡）。 */
@@ -43,9 +53,6 @@ const DICT_EN: Record<LocaleKey, string> = {
   sortUpdatedAt: 'Updated time',
   sortCreatedAt: 'Created time',
   sortTitle: 'Alphabetical',
-  groupLabel: 'Group',
-  groupByGroup: 'By group',
-  groupByProject: 'By project',
   allProjects: 'All projects',
   ungrouped: 'Ungrouped',
   unarchive: 'Unarchive',
@@ -53,7 +60,20 @@ const DICT_EN: Record<LocaleKey, string> = {
   noResults: 'No matching chats',
   loadFailed: 'Failed to load',
   chats: 'chats',
-  archiveWorkspace: 'Archive workspace',
+  archiveWorkspace: 'Archive sessions',
+  archiveWorkspaceTitle: 'Archive {count} sessions?',
+  archiveWorkspaceDescription: 'This will archive the sessions in {workspace}. You can find them in Archived sessions afterwards.',
+  archiveWorkspaceConfirm: 'Archive all',
+  cancel: 'Cancel',
+  deleteConfirm: 'Delete',
+  deleteRowAria: 'Delete this session',
+  deleteSingleTitle: 'Delete archived chat?',
+  deleteSingleBody: 'This will permanently delete the archived chat.',
+  deleteAllTitle: 'Delete all archived chats?',
+  deleteAllBody: 'This will permanently delete all locally archived chat records.',
+  loading: 'Working…',
+  unarchivedToast: 'Chat unarchived',
+  view: 'View',
 }
 
 /** 活跃语言 id（module 级缓存，apply 时初始化并由订阅推进）。 */
@@ -79,8 +99,9 @@ export function installLocale(ctx: Context): void {
 }
 
 /** 按当前活跃语言取一条文案。 */
-export function text(key: LocaleKey): string {
-  return activeLocale === 'en' ? DICT_EN[key] : DICT_ZH[key]
+export function text(key: LocaleKey, values: Record<string, string | number> = {}): string {
+  const template = activeLocale === 'en' ? DICT_EN[key] : DICT_ZH[key]
+  return template.replace(/\{(\w+)\}/g, (_, name: string) => String(values[name] ?? `{${name}}`))
 }
 
 /** 组件内订阅 locale 变更（revision 前进即重渲染）。 */

@@ -5,14 +5,14 @@
  * 两块功能：
  *   - archive-page.tsx  注册进 settings.section（导航项「归档」，经官方设置侧边栏
  *     投影出导航行），渲染归档列表页（搜索 / 排序 / 分组 / 项目选择 / 取消归档）；
- *   - workspace-patch.ts  DOM 补丁：把官方工作区浏览器每组的「删除工作区」改写为
- *     「归档工作区」，点击改为归档该组全部会话；并把归档集合中的会话行隐藏出组。
+ *     数据源为宿主归档集合（官方「归档」与「归档工作区」共用同一份数据）。
+ *   - workspace-patch.ts  DOM 补丁：把官方项目行「…」菜单里的「删除工作区」改写为
+ *     「归档工作区」，点击改为归档该组全部会话（portal 菜单条目拦截）。
  *
  * 与 node half（src/index.ts）经 /api/dsh-session/* 通信（archived/archive/
  * archive-workspace/unarchive/clear）。
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { ArchivePage } from './archive-page'
 import {
   SESSION_ARCHIVE_PATCH_EFFECT,
   SESSION_ARCHIVE_SECTION_EFFECT,
@@ -23,6 +23,7 @@ import {
   SETTINGS_SECTION_SLOT,
 } from './constants'
 import { installLocale, text } from './locale'
+import { ArchivePanel } from './panel'
 import { mountSessionStyles } from './styles'
 import { installWorkspaceArchivePatch } from './workspace-patch'
 
@@ -55,11 +56,11 @@ export function apply(ctx: ClientContext): void {
           label: () => text('section'),
           inject: () => ({ sessionsRuntime: ctx.sessions, workspacesRuntime: ctx.workspaces }),
         } as never,
-        ArchivePage,
+        ArchivePanel,
       ),
     SESSION_ARCHIVE_SECTION_EFFECT,
   )
 
   // 2) 工作区浏览器补丁：替换「删除工作区」+ 隐藏归档会话行。
-  ctx.effect(() => installWorkspaceArchivePatch(ctx.workspaces), SESSION_ARCHIVE_PATCH_EFFECT)
+  ctx.effect(() => installWorkspaceArchivePatch(ctx.workspaces, ctx.sessions as unknown as import('./types').SessionsRuntimeLike), SESSION_ARCHIVE_PATCH_EFFECT)
 }

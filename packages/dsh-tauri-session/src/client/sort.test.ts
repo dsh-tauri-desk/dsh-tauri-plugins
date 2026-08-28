@@ -1,6 +1,6 @@
 import type { ArchiveRow } from './types'
 import { describe, expect, it } from 'vitest'
-import { groupArchive, rowSortValue } from './archive-sort'
+import { groupArchive, rowSortValue } from './sort'
 
 function row(partial: Partial<ArchiveRow> & { sessionId: string }): ArchiveRow {
   return {
@@ -32,33 +32,28 @@ describe('groupArchive', () => {
   ]
 
   it('keeps every group even when a session has no workspace (未分组)', () => {
-    const groups = groupArchive(rows, 'updatedAt', 'group', '未分组')
+    const groups = groupArchive(rows, 'updatedAt', '未分组')
     const ids = groups.map(g => g.id)
     expect(ids).toContain('w1')
     expect(ids).toContain('ungrouped')
   })
 
-  it('orders groups by member recency under the group mode', () => {
+  it('orders groups by member recency', () => {
     // group w1 most-recent update = 200, ungrouped = 300 → ungrouped ranks first (desc).
-    const groups = groupArchive(rows, 'updatedAt', 'group', '未分组')
+    const groups = groupArchive(rows, 'updatedAt', '未分组')
     expect(groups[0].id).toBe('ungrouped')
     expect(groups[1].id).toBe('w1')
   })
 
   it('orders within a group by the sort method (updated time desc)', () => {
-    const groups = groupArchive(rows, 'updatedAt', 'group', '未分组')
+    const groups = groupArchive(rows, 'updatedAt', '未分组')
     const w1 = groups.find(g => g.id === 'w1')
     expect(w1?.rows.map(r => r.sessionId)).toEqual(['s2', 's1'])
   })
 
   it('orders within a group by created time (newest first) when so chosen', () => {
-    const groups = groupArchive(rows, 'createdAt', 'group', '未分组')
+    const groups = groupArchive(rows, 'createdAt', '未分组')
     const w1 = groups.find(g => g.id === 'w1')
     expect(w1?.rows.map(r => r.sessionId)).toEqual(['s1', 's2'])
-  })
-
-  it('orders groups alphabetically by title under the project mode (未分组 pinned last)', () => {
-    const groups = groupArchive(rows, 'updatedAt', 'project', '未分组')
-    expect(groups.map(g => g.id)).toEqual(['w1', 'ungrouped'])
   })
 })
