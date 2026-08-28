@@ -1,0 +1,13 @@
+# dsh-tauri-temp-session bundle patch —— 把本插件的行挂入插件配置。
+#
+# 一个行同时承担两种角色（与 dsh-tauri-worktree 相同）：
+#   - 行内 `name` 指向本包，主机侧按此加载 dist/index.js（内核补丁 / reserve 路由 /
+#     启动清理 / 系统提示注入）；
+#   - 节点半区（dsh-client-modules）扫描包内的 `dsh.client` 声明，经
+#     exports["./client"] 提供浏览器名册，并服务 /plugins/dsh-tauri-temp-session/client.js。
+#
+# tempRoot 不在此内联配置：缺省值在 apply 内解析为 $DSH_HOME/tmp-sessions
+# （无 $DSH_HOME 时 ~/.dsh/tmp-sessions），需要时仍可通过行内 config.tempRoot 覆盖。
+- insert:
+    - id: dsh-tauri-temp-session
+      name: dsh-tauri-temp-session
