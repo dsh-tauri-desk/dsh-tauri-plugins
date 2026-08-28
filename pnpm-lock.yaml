@@ -226,7 +226,11 @@ importers:
 
   packages/dsh-tauri-panel-placeholder: {}
 
+
   packages/dsh-tauri-rightclick-menu: {}
+
+  packages/dsh-tauri-temp-session: {}
+
 
   packages/dsh-tauri-tsdown:
     devDependencies:
