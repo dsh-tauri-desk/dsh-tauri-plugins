@@ -1,57 +1,73 @@
 # dsh-tauri-session
 
-DeepSeek Harness 桌面端插件：把工作区浏览器里的「删除工作区」改为「归档工作区」，
-并提供「已归档的聊天」设置页（搜索 / 排序 / 分组 / 项目选择 / 取消归档）。
+DeepSeek Harness 桌面端插件：管理「已归档的聊天」的设置页（搜索 / 排序 / 分组 /
+项目选择 / 取消归档 / 全部删除），并把官方工作区浏览器的「删除工作区」改写为
+「归档工作区」。
 
-采用 host half / client half 架构，与 `dsh-tauri-worktree` 同构：
+采用 host half / client half 架构：
 
 - `src/*.ts`：宿主侧（node half）实现。
 - `src/client/*.ts(x)`：浏览器侧（browser half）实现，渲染设置分区与 DOM 补丁。
 
 ## 功能
 
-- **工作区会话组控件**：把官方工作区浏览器每个组的「删除工作区」改写为「归档工作区」，
-  行为改为「归档该工作区全部会话」（不再删除工作区）。
 - **设置页「归档」**：在设置侧边栏新增「归档」导航项，内容为「已归档的聊天」列表。
-- **归档页控件**：搜索框（搜索已归档的聊天）、排序方式（更新时间 / 创建时间 / 按字母排序）、
-  分组方式（按组排序 / 按子项目排序）、项目选择框。
-- **分组规则**：排序方式同时影响「组」与「组内聊天」；组按成员聚合值排序，
-  组内按排序方式排序；无项目组统一命名为「未分组」。
-- **取消归档**：删除该会话的归档记录后，回到其原来的工作区组（归档从不修改宿主工作区的
-  sessionIds 记账，因此会话在组内保留的位置自动恢复显示）。
-- **僵尸会话清理**：插件初始化时自动清理「会话存在但工作目录已不存在」的僵尸归档记录。
+- **归档页控件**：搜索框（搜索已归档的聊天）、排序方式（更新时间 / 创建时间 /
+  按字母排序）、项目选择框 —— 使用官方
+  `@deepseek-ai/dsh-client-ui-primitives` 组件（`Input` / `Menu` / `Button`）；
+  下拉触发器对齐官方「通用设置」Select 的 pill 样式（36px 全圆角、无边框、
+  `bg-module-platform` 底）。
+- **分组规则**：排序方式同时影响「组」与「组内聊天」（两级都排序）；组按成员
+  聚合值排序，组内按排序方式排序；无项目组统一命名为「未分组」。
+- **取消归档**：从宿主归档集合移除该会话后，回到其原来的工作区组（宿主归档
+  从不修改工作区 sessionIds 记账，会话在组内保留的位置自动恢复显示）；成功后
+  弹「对话已取消归档 [查看]」toast，查看可跳转到恢复的会话。
+- **彻底删除**：每行垃圾桶与「全部删除」（危险色）为破坏性操作，均经官方
+  `Modal` 二次确认（单项：「删除已归档聊天？」；全部：「删除所有已归档本地
+  聊天？」）—— 从宿主归档集合移除并物理删除会话数据（宿主无公开「删除会话」
+  API，按 `$DSH_HOME/sessions/<group>/session-<id>/` 有界扫描删除的是会话
+  持久化目录，宿主重启后从持久化重建索引，会话从工作区与归档中彻底消失）。
+- **加载态**：变更（取消归档 / 删除）进行中时动作按钮禁用并弹 loading toast，
+  完成后消失；失败在页面顶部显示错误。
 
-## 归档机制（插件自持有）
+## 归档机制（v2：宿主归档集合）
 
-宿主 `WorkspaceRegistry` 只暴露 `archiveSession`，**没有**把会话移出归档集（unarchive）的方法。
-因此本插件**自持有**归档集合（`~/.dsh/dsh-tauri-session/archive.json`），从不调用宿主的
-`archiveSession`，也从不修改工作区的 sessionIds。归档只记录：
+v2 起插件不再自持 `archive.json`，而是直接使用**宿主 `WorkspaceRegistry` 的归档
+集合**（`archivedSessionIds`，持久化、对官方所有分组界面隐藏、不动工作区记账）——
+与官方会话行菜单里的「归档」动作写入的是同一份数据，因此两种入口归档的会话都会
+出现在本插件的「已归档的聊天」页面。
 
-```ts
-interface ArchivedSessionRecord {
-  sessionId: string
-  workspaceId?: string // 归档时所属的工作区组
-  beforeSessionId?: string // 组内顺序锚点
-  archivedAt: number
-}
-```
-
-取消归档 = 删除记录；会话因其工作区记账从未被改动，会在原组原位上重新出现。
+- 宿主公开 API 只有 `archiveSession`（没有 unarchive），因此「取消归档」/「全部
+  删除」经由注册表内部状态机（`enqueueOperation` + `requireState` + `setState`）
+  改写归档集合；若宿主升级改变内部结构，接口会明确报错而不是静默降级。
+- 插件初始化时会把 v1 自持的 `~/.dsh/dsh-tauri-session/archive.json` 记录一次性
+  迁入宿主归档集合并删除旧文件（会话已不存在的僵尸记录随旧文件丢弃）。
 
 ## 宿主路由（/api/dsh-session/*）
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/archived` | 归档会话 id + 每个会话的创建元数据（读 host session header） |
-| POST | `/archive` | 归档单个会话（按 cwd 解析工作区） |
-| POST | `/archive-workspace` | 归档整个工作区组（一次写入多条记录） |
-| POST | `/unarchive` | 取消归档（删除记录） |
-| POST | `/clear` | 清空归档（全部会话回到原组） |
-| POST | `/prune` | 清理僵尸归档（工作目录已不存在） |
+| GET | `/archived` | 宿主归档集合 id + 每个会话的创建元数据（读 host session header） |
+| POST | `/archive` | 归档单个会话 |
+| POST | `/archive-workspace` | 归档一组会话（一次调用） |
+| POST | `/unarchive` | 取消归档（改写宿主归档集合） |
+| POST | `/delete` | 彻底删除单个归档会话（归档集合移除 + 物理删除会话数据） |
+| POST | `/clear` | 彻底删除全部已归档会话（同上，批量） |
+
+## 客户端补丁（workspace-patch.ts）
+
+官方 WorkspaceBrowser 的「删除工作区」是项目行「…」菜单（primitives `Menu`，
+portal 渲染到 `document.body`）里的 `button[role=menuitem]` 条目，不是侧边栏按钮。
+补丁因此：
+
+1. 监听每个项目行（`[role=treeitem][aria-expanded]`）「…」按钮的点击，记录其工作区组；
+2. 扫描 portal 菜单，把「删除工作区」条目改写为「归档工作区」并拦截其点击，
+   改为归档该组全部会话（`/api/dsh-session/archive-workspace`）。
 
 ## 目录约定
 
-- 插件自有状态目录：`$DSH_HOME/dsh-tauri-session/`（默认 `~/.dsh/dsh-tauri-session/`）。
+- 旧版（v1）自有状态目录 `$DSH_HOME/dsh-tauri-session/`（默认
+  `~/.dsh/dsh-tauri-session/`）仅在迁移旧记录时读取；v2 不再写入。
 
 ## 开发
 
