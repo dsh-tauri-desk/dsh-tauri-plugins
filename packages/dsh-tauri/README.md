@@ -2,7 +2,7 @@
 
 `dsh-tauri` 是 DSH Tauri 桌面壳的基础插件。它提供一个无宿主行为的 host half，以及运行在 DSH iframe 中的客户端消息桥。
 
-![dsh-tauri 导航桥](public/[placeholder])
+![dsh-tauri 导航桥](public/navigation-bridge.png)
 
 ## 功能
 

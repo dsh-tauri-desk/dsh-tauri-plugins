@@ -2,7 +2,7 @@
 
 为 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 提供 Tauri 桌面端能力的插件工作区。插件遵循 DSH 的 **host half / client half** 模型：宿主侧负责工具、路由和系统上下文，客户端负责 iframe 内的 UI 与消息桥接。
 
-![dsh-tauri 插件工作区](public/[placeholder])
+![dsh-tauri 插件工作区](public/overview.png)
 
 ## 插件
 
@@ -15,6 +15,7 @@
 | [`dsh-tauri-panel`](./packages/dsh-tauri-panel) | Tauri 面板 UI 与 `panel.protocol` 宿主 | `0.0.0` |
 | [`dsh-tauri-panel-extension`](./packages/dsh-tauri-panel-extension) | “扩展”面板：技能、技能仓库导入与 MCP 管理 | `0.0.0` |
 | [`dsh-tauri-panel-placeholder`](./packages/dsh-tauri-panel-placeholder) | 面板占位实现，用于预留集成入口 | `0.0.0` |
+| [`dsh-tauri-rightclick-menu`](./packages/dsh-tauri-rightclick-menu) | 原生风格右键菜单：会话/工作区/正文/链接/输入框 | `0.4.9` |
 
 `dsh-tauri-tsdown` 是工作区内部使用的 tsdown 配置包，不作为运行时插件发布。
 
