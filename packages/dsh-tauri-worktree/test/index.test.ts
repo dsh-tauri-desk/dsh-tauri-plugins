@@ -1,10 +1,11 @@
+import { Buffer } from 'node:buffer'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
-import { checkoutToLocal, ensureWorktree } from '../src/index.js'
+import { buildRoutes, checkoutToLocal, ensureWorktree } from '../src/index.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -349,5 +350,93 @@ describe('dsh-tauri-worktree carry staged', () => {
     finally {
       await rm(rootDir, { recursive: true, force: true })
     }
+  })
+})
+
+/** 最小宿主 ctx：只提供 status/create 路由用到的 sessions/workspaceRegistry 面。 */
+function hostCtx(sessions: Record<string, unknown>): any {
+  return {
+    sessions: {
+      get: (id: string) => sessions[id],
+      list: () => Object.values(sessions),
+    },
+    workspaceRegistry: {
+      resolveByPath: async () => undefined,
+    },
+  }
+}
+
+/** 可发出事件（data/end）的假请求，供 routeHandler 读取 body。 */
+function fakeReq(overrides: Record<string, unknown>, body?: unknown): any {
+  const listeners = new Map<string, Array<(...args: any[]) => void>>()
+  const req: any = {
+    method: 'GET',
+    url: '/',
+    socket: { remoteAddress: '127.0.0.1' },
+    on: (event: string, fn: (...args: any[]) => void) => {
+      listeners.set(event, [...(listeners.get(event) ?? []), fn])
+      return req
+    },
+    ...overrides,
+  }
+  queueMicrotask(() => {
+    if (body !== undefined) {
+      for (const fn of listeners.get('data') ?? []) fn(Buffer.from(JSON.stringify(body)))
+    }
+    for (const fn of listeners.get('end') ?? []) fn()
+  })
+  return req
+}
+
+/** 捕获 writeHead/end 的假响应。 */
+function fakeRes(): any {
+  const res: any = {}
+  res.writeHead = (code: number) => {
+    res.code = code
+  }
+  res.end = (payload?: string) => {
+    res.payload = payload
+  }
+  return res
+}
+
+describe('dsh-tauri-worktree status/create routes', () => {
+  it('/status returns isGit: null for an unresolved session instead of guessing from process.cwd()', async () => {
+    const routes = buildRoutes(hostCtx({}), { worktreesRoot: join(tmpdir(), 'wt-status-unknown') })
+    const status = routes.find(route => route.path === '/api/dsh-worktree/status')!
+    const res = fakeRes()
+    await status.handler(fakeReq({ url: '/api/dsh-worktree/status?sessionId=ghost' }), res)
+    expect(res.code).toBe(200)
+    expect(JSON.parse(res.payload)).toEqual({ mode: 'local', projectPath: '', isGit: null })
+  })
+
+  it('/status reports isGit: true for a known session inside a git repository', async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), 'wt-status-git-'))
+    try {
+      const repo = await makeRepo(join(rootDir, 'repo'))
+      const routes = buildRoutes(hostCtx({ 'sess-1': { header: { cwd: repo } } }), {
+        worktreesRoot: join(rootDir, 'worktrees'),
+      })
+      const status = routes.find(route => route.path === '/api/dsh-worktree/status')!
+      const res = fakeRes()
+      await status.handler(fakeReq({ url: '/api/dsh-worktree/status?sessionId=sess-1' }), res)
+      expect(res.code).toBe(200)
+      const body = JSON.parse(res.payload)
+      expect(body.mode).toBe('local')
+      expect(body.isGit).toBe(true)
+      expect(body.projectPath).toBe(repo)
+    }
+    finally {
+      await rm(rootDir, { recursive: true, force: true })
+    }
+  })
+
+  it('/create rejects when the source session directory cannot be resolved', async () => {
+    const routes = buildRoutes(hostCtx({}), { worktreesRoot: join(tmpdir(), 'wt-create-unknown') })
+    const create = routes.find(route => route.path === '/api/dsh-worktree/create')!
+    const res = fakeRes()
+    await create.handler(fakeReq({ method: 'POST' }, { sessionId: 'ghost' }), res)
+    expect(res.code).toBe(400)
+    expect(JSON.parse(res.payload).error).toContain('无法解析会话工作目录')
   })
 })

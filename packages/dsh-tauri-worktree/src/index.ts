@@ -34,7 +34,6 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import process from 'node:process'
 import { WORKTREE_API_PREFIX, WORKTREE_BRANCH_NAME_PATTERN, WORKTREE_SECTION_ORDER } from './constants.js'
 import { applyStagedPatch, carryStagedChanges, git, gitToplevel, headSubject, projectDirname, shortHead, stagedPatch } from './git.js'
 import { routeHandler } from './http.js'
@@ -103,26 +102,36 @@ function findSession(ctx: HostContext, sessionId: string): any {
 }
 
 /**
- * 解析会话的项目根路径：session.header.cwd 或 workspaceRegistry.resolveByPath，兜底
- * 回退进程当前目录。
+ * 解析会话的项目根路径：优先 session.header.cwd / session.cwd，其次 workspaceRegistry
+ * 按该路径解析工作区根。会话未知或没有任何路径信息时返回 null（调用方按「未知」处理）。
+ *
+ * 设计原因：新建会话/应用启动存在竞态——客户端列表已出现会话，但宿主 SessionStore 尚无
+ * 该会话或 header.cwd 尚未落定。此时绝不能静默回退 process.cwd() 猜测：宿主进程的工作
+ * 目录未必是 git 仓库，一旦误判 isGit: false，客户端会永久隐藏工作树模式选择器，直到
+ * 刷新后才由真实 header.cwd 纠正。返回 null 让客户端保持默认（git）并稍后重试。
  * @param {any} ctx
  * @param {any} session
- * @returns {Promise<string | null>} 项目根路径（解析失败回退进程 cwd）
+ * @returns {Promise<string | null>} 项目根路径；会话无路径信息时返回 null
  */
-async function resolveProjectPath(ctx: HostContext, session: any): Promise<string> {
-  if (session?.header?.cwd && isAbsolute(session.header.cwd))
-    return session.header.cwd
-  if (session?.cwd && isAbsolute(session.cwd))
-    return session.cwd
+async function resolveProjectPath(ctx: HostContext, session: any): Promise<string | null> {
+  const cwd = typeof session?.header?.cwd === 'string'
+    ? session.header.cwd
+    : typeof session?.cwd === 'string'
+      ? session.cwd
+      : ''
+  if (!cwd)
+    return null
+  if (isAbsolute(cwd))
+    return cwd
   try {
-    const ws = await ctx.workspaceRegistry.resolveByPath(session?.cwd ?? process.cwd())
+    const ws = await ctx.workspaceRegistry.resolveByPath(cwd)
     if (ws?.path)
       return ws.path
   }
   catch {
     /* registry 不可用时忽略 */
   }
-  return process.cwd()
+  return cwd
 }
 
 // ---------------------------------------------------------------------------
@@ -687,6 +696,8 @@ export function createToolSet(
 
         const targetSessionId = `session-${randomUUID()}`
         const projectPath = await resolveProjectPath(ctx, sourceSession)
+        if (!projectPath)
+          return { ok: false, error: '无法解析当前会话的工作目录：会话尚未就绪，请稍后重试' }
         const created = await ensureWorktree(ctx, worktreesRoot, projectPath, targetSessionId, {
           sourceSessionId: sourceSession.id,
           branchName: String(args.branch_name ?? ''),
@@ -795,7 +806,9 @@ export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
         const session = findSession(ctx, sessionId)
         const projectPath = binding?.projectPath ?? (await resolveProjectPath(ctx, session))
         // 会话工作目录不在 git 仓库内时禁止工作树：isGit 供客户端隐藏模式选择器并强制本地模式。
-        const isGit = Boolean(await gitToplevel(projectPath))
+        // 会话未知（新建/启动竞态，尚无 cwd）时不猜测：isGit 置 null，客户端保持默认并稍后
+        // 重试，避免把 git 目录误判成非 git 而隐藏工作树模式选择器。
+        const isGit = projectPath ? Boolean(await gitToplevel(projectPath)) : null
         return [200, activeBinding
           ? {
               mode: 'worktree',
@@ -808,7 +821,7 @@ export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
               log: Array.isArray(activeBinding.log) ? activeBinding.log : [],
               isGit,
             }
-          : { mode: 'local', projectPath, isGit }]
+          : { mode: 'local', projectPath: projectPath ?? '', isGit }]
       }),
     },
     {
@@ -821,6 +834,8 @@ export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
           return [400, { error: '缺少 sessionId' }]
         const sourceSession = findSession(ctx, sourceSessionId)
         const projectPath = await resolveProjectPath(ctx, sourceSession)
+        if (!projectPath)
+          return [400, { error: '无法解析会话工作目录：会话尚未就绪，请稍后重试' }]
         const r = await ensureWorktree(ctx, worktreesRoot, projectPath, sessionId, {
           sourceSessionId,
           carryStaged: body.carryStaged === true,

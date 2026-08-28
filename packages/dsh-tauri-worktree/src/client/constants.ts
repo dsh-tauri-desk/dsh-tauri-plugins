@@ -19,6 +19,18 @@ export const SESSION_ICONS_EFFECT = `${WORKTREE_PLUGIN_NAME}: session branch ico
 export const SESSION_SWITCH_RETRY_DELAY_MS = 100
 export const SESSION_SWITCH_MAX_ATTEMPTS = 30
 
+/** hydration 失败/未知状态的重试间隔与上限（1.5s × 30 ≈ 45s，成功后立即停止）。 */
+export const HYDRATION_RETRY_DELAY_MS = 1500
+export const HYDRATION_MAX_RETRIES = 30
+
+/**
+ * create_worktree 自动交接的时效窗口：只有「本次运行期间新出现」且出现不超过该时长的
+ * 工作树会话才允许自动打开。启动时已存在的历史工作树、以及用户事后回到源会话的场景
+ * 一律不抢焦点（否则点击新建会话会被误跳转到工作树会话）。
+ * 60s 覆盖 hydration 的完整重试链（45s），避免慢速首查把真实交接误判为过期。
+ */
+export const HANDOFF_WINDOW_MS = 60_000
+
 export const MODE_SELECT_STYLE_ID = '@deepseek-ai/dsh-tauri-worktree/ModeSelect.module.css'
 export const WORKTREE_STYLE_ID = '@deepseek-ai/dsh-tauri-worktree/SurfaceDialog.module.css'
 export const SESSION_ICON_STYLE_ID = '@deepseek-ai/dsh-tauri-worktree/SessionBranchIcon.module.css'
