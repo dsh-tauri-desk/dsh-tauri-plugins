@@ -1,39 +1,40 @@
 /**
- * dsh-tauri-session 宿主侧（node half）：插件自有的「已归档聊天」存档与管理。
+ * dsh-tauri-session 宿主侧（node half）：「已归档聊天」的管理接口。
  *
- * 职责（参照 dsh-tauri-worktree 的 host/client 架构）：
- *   1. 维护插件自有的归档集合（`~/.dsh/dsh-tauri-session/archive.json`），
- *      不触碰宿主 WorkspaceRegistry 的 archiveSession（宿主没有 unarchive，
- *      无法把会话移出归档集）；
- *   2. 暴露 /api/dsh-session/* 给客户端（list / archive / unarchive /
- *      archive-workspace / prune）；
- *   3. 插件初始化时自动清理僵尸归档（归档会话的工作目录已不存在）。
- *
- * 归档语义：归档只记录 sessionId 及它在归档时所属的工作区组与位置锚点，
- * 从不修改宿主工作区的 sessionIds 记账 —— 因此「取消归档」删掉记录后，
- * 会话会在原来的工作区组里、位于保留的位置自动恢复显示。
+ * 归档语义（v2，与官方机制对齐）：
+ *   官方工作区浏览器会话行菜单自带「归档」动作，写入宿主 WorkspaceRegistry 的
+ *   归档集合（`archivedSessionIds`，持久化、隐藏于所有分组界面、不动工作区记账，
+ *   取消归档自动恢复原组原位）。因此本插件不再维护自有的 `archive.json`，
+ *   而是直接读写宿主归档集合：
+ *     - `GET  /archived`        读宿主归档集合 + 会话头元数据；
+ *     - `POST /archive`         归档单个会话（宿主 `archiveSession`）；
+ *     - `POST /archive-workspace` 归档一组会话（插件 UI「归档工作区」）；
+ *     - `POST /unarchive`       从宿主归档集合移除（宿主无公开 unarchive，
+ *                               走注册表内部状态机，见 `updateRegistryArchiveSet`）；
+ *     - `POST /delete`          彻底删除单个归档会话（归档集合移除 + 物理删除会话数据）；
+ *     - `POST /clear`           彻底删除全部已归档会话（同上，批量）。
+ *   插件初始化时把旧版自持 `archive.json` 的记录一次性迁入宿主集合后删除旧文件。
  */
 
 import type {
   ArchivedListPayload,
   ArchiveDocument,
-  ArchivedSessionRecord,
   HostContext,
   PluginConfig,
   SessionLike,
 } from './types.js'
-import { existsSync } from 'node:fs'
+import { readdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
-import { SESSION_API_PREFIX, SESSION_PLUGIN_NAME } from './constants.js'
+import { SESSION_API_PREFIX, SESSION_ARCHIVE_FILE, SESSION_PLUGIN_NAME } from './constants.js'
 import { routeHandler } from './http.js'
-import { loadArchive, saveArchive } from './storage.js'
+import { loadArchive, saveArchive, sessionStateDir } from './storage.js'
 
 /** 插件名（诊断元数据，与导出的 name 一致）。 */
 export const name = SESSION_PLUGIN_NAME
 
-/** 需要的宿主服务：webServer（HTTP 路由）、sessions（会话枚举/header）、workspaceRegistry（工作区归属）。 */
+/** 需要的宿主服务：webServer（HTTP 路由）、sessions（会话枚举/header）、workspaceRegistry（归档集合）。 */
 export const inject = ['webServer', 'sessions', 'workspaceRegistry']
 
 /** API 路由前缀（客户端同源 fetch）。 */
@@ -57,185 +58,340 @@ function sessionCwd(session: SessionLike | undefined): string | undefined {
   return typeof cwd === 'string' && cwd ? cwd : undefined
 }
 
-/** 解析会话所属工作区 id（按 cwd 解析；解析失败返回 undefined）。 */
-async function resolveWorkspaceId(ctx: HostContext, sessionId: string): Promise<string | undefined> {
-  const session = findSession(ctx, sessionId)
-  const cwd = sessionCwd(session)
-  if (!cwd)
-    return undefined
-  try {
-    const workspace = await ctx.workspaceRegistry?.resolveByPath?.(cwd)
-    return workspace?.id as string | undefined
-  }
-  catch {
-    return undefined
-  }
-}
-
-/** 按归档时间升序排列的已归档会话 id（稳定的参考顺序，客户端自行分组/排序）。 */
-function orderedArchiveIds(archive: ArchiveDocument): string[] {
-  return Object.values(archive)
-    .sort((a, b) => a.archivedAt - b.archivedAt)
-    .map(record => record.sessionId)
-}
-
-/** 组装 GET /archived 的载荷：归档 id + 每个会话的创建元数据（读 host session header）。 */
-function buildArchivedPayload(ctx: HostContext, archive: ArchiveDocument): ArchivedListPayload {
-  const archivedSessionIds = orderedArchiveIds(archive)
+/** 组装 GET /archived 的载荷：宿主归档集合 id + 每个会话的创建元数据（读 host session header）。 */
+function buildArchivedPayload(ctx: HostContext): ArchivedListPayload {
+  const registry = ctx.workspaceRegistry as { archivedSessionIds?: readonly string[] } | undefined
+  const archivedSessionIds: string[] = []
   const meta: ArchivedListPayload['meta'] = {}
-  for (const sessionId of archivedSessionIds) {
+  for (const sessionId of registry?.archivedSessionIds ?? []) {
     const session = findSession(ctx, sessionId)
+    if (!session)
+      continue
+    archivedSessionIds.push(sessionId)
     const cwd = sessionCwd(session)
     meta[sessionId] = {
       createdAt: session?.header?.createdAt,
       cwd,
+      ...(session?.displayTitle ? { title: session.displayTitle } : session?.title ? { title: session.title } : {}),
     }
   }
   return { archivedSessionIds, meta }
 }
 
-/** 归档一个会话（幂等：已归档则仅刷新位置信息）。 */
-async function archiveSession(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<ArchivedListPayload> {
+/** 归档一个会话（宿主归档集合，幂等：已归档则无操作）。 */
+async function archiveSession(ctx: HostContext, body: Record<string, unknown>): Promise<ArchivedListPayload> {
   const sessionId = String(body.sessionId ?? '')
   if (!sessionId)
     throw new Error('缺少 sessionId')
-  const archive = loadArchive(dshHome)
-  const workspaceId = typeof body.workspaceId === 'string' && body.workspaceId
-    ? body.workspaceId
-    : await resolveWorkspaceId(ctx, sessionId)
-  const existing = archive[sessionId]
-  const beforeSessionId = typeof body.beforeSessionId === 'string' && body.beforeSessionId
-    ? body.beforeSessionId
-    : existing?.beforeSessionId
-  const record: ArchivedSessionRecord = {
-    sessionId,
-    archivedAt: existing?.archivedAt ?? Date.now(),
-    ...(workspaceId ? { workspaceId } : {}),
-    ...(beforeSessionId ? { beforeSessionId } : {}),
-  }
-  archive[sessionId] = record
-  saveArchive(archive, dshHome)
-  return buildArchivedPayload(ctx, archive)
+  await ctx.workspaceRegistry?.archiveSession?.(sessionId)
+  return buildArchivedPayload(ctx)
 }
 
-/** 取消归档（删除记录；会话在其工作区组保留的位置自动恢复）。 */
-function unarchiveSession(dshHome: string, body: Record<string, unknown>): { ok: true } {
+/** 归档一组会话（「归档工作区」：一次调用归档该组全部会话）。 */
+async function archiveWorkspace(ctx: HostContext, body: Record<string, unknown>): Promise<ArchivedListPayload> {
+  const sessionIds = Array.isArray(body.sessionIds) ? body.sessionIds.map(String) : []
+  if (sessionIds.length === 0)
+    throw new Error('缺少 sessionIds')
+  for (const sessionId of sessionIds)
+    await ctx.workspaceRegistry?.archiveSession?.(sessionId)
+  return buildArchivedPayload(ctx)
+}
+
+/**
+ * 宿主归档集合的私有状态机面。宿主公开 API 只有 `archiveSession`（没有 unarchive），
+ * 而取消归档是插件的核心功能，因此这里显式依赖注册表内部方法：
+ * `enqueueOperation`（串行化读改写）、`requireState`（当前持久化状态）、
+ * `setState`（写回并发布）。三者任一缺失（宿主升级改内部结构）即报错，绝不静默降级。
+ */
+interface SessionStoreSurface {
+  get?: (id: string) => SessionLike | undefined
+  remove?: (id: string) => boolean
+}
+
+interface RegistryArchiveSurface {
+  enqueueOperation?: (fn: () => Promise<void>) => Promise<void>
+  requireState?: () => { archivedSessionIds?: readonly string[] }
+  requireTable?: () => {
+    entries: () => Iterable<[string, { sessionIds?: readonly string[] }]>
+    update: (id: string, update: (record: { sessionIds?: readonly string[] }) => { sessionIds: string[] }) => Promise<void>
+  }
+  setState?: (state: unknown) => Promise<void>
+}
+
+function registryArchiveSurface(ctx: HostContext): RegistryArchiveSurface {
+  const registry = ctx.workspaceRegistry as unknown as RegistryArchiveSurface | undefined
+  if (!registry || typeof registry.enqueueOperation !== 'function' || typeof registry.requireState !== 'function' || typeof registry.setState !== 'function')
+    throw new Error('宿主 workspaceRegistry 未暴露归档集合的变更接口（宿主版本不兼容）')
+  return registry
+}
+
+/** Remove a session from every workspace accounting slot before physical deletion. */
+async function removeSessionFromWorkspaceAccounting(ctx: HostContext, sessionIds: readonly string[]): Promise<void> {
+  const registry = registryArchiveSurface(ctx)
+  const table = registry.requireTable?.()
+  if (!table)
+    throw new Error('宿主 workspaceRegistry 未暴露工作区会话记账接口（宿主版本不兼容）')
+  const ids = new Set(sessionIds)
+  for (const [workspaceId, record] of table.entries()) {
+    const next = (record.sessionIds ?? []).filter(id => !ids.has(id))
+    if (next.length !== (record.sessionIds ?? []).length)
+      await table.update(workspaceId, current => ({ ...current, sessionIds: next }))
+  }
+}
+
+/** 串行化地改写宿主归档集合（unarchive / clear 共用）。 */
+export async function updateRegistryArchiveSet(ctx: HostContext, update: (ids: string[]) => string[]): Promise<void> {
+  const registry = registryArchiveSurface(ctx)
+  await registry.enqueueOperation!(async () => {
+    const state = registry.requireState!()
+    const archived = [...(state.archivedSessionIds ?? [])]
+    const next = update(archived)
+    if (next.length === archived.length && next.every((id, index) => id === archived[index]))
+      return
+    await registry.setState!({ ...state, archivedSessionIds: next })
+  })
+}
+
+/**
+ * Restore the accounting slot when an older delete-all attempt removed it.
+ * Normal archives already have the slot and this is a no-op; damaged historical
+ * data is repaired from the session header cwd and the matching workspace path.
+ */
+async function restoreSessionWorkspaceAccounting(ctx: HostContext, sessionId: string): Promise<void> {
+  const registry = registryArchiveSurface(ctx)
+  const table = registry.requireTable?.()
+  const session = findSession(ctx, sessionId)
+  const cwd = sessionCwd(session)
+  if (!table || !cwd || typeof ctx.workspaceRegistry?.list !== 'function')
+    return
+  const workspace = (ctx.workspaceRegistry.list() as Array<{ id: string, path?: string, sessionIds?: readonly string[] }>).find(item => item.path === cwd)
+  if (!workspace || workspace.sessionIds?.includes(sessionId))
+    return
+  await table.update(workspace.id, current => ({ ...current, sessionIds: [...(current.sessionIds ?? []), sessionId] }))
+}
+
+/** 取消归档：移除归档标记，并修复历史数据缺失的工作区归属槽位。 */
+async function unarchiveSession(ctx: HostContext, body: Record<string, unknown>): Promise<{ ok: true }> {
   const sessionId = String(body.sessionId ?? '')
   if (!sessionId)
     throw new Error('缺少 sessionId')
-  const archive = loadArchive(dshHome)
-  delete archive[sessionId]
-  saveArchive(archive, dshHome)
+  const registry = registryArchiveSurface(ctx)
+  await registry.enqueueOperation!(async () => {
+    await restoreSessionWorkspaceAccounting(ctx, sessionId)
+    const state = registry.requireState!()
+    const archived = [...(state.archivedSessionIds ?? [])]
+    const next = archived.filter(id => id !== sessionId)
+    if (next.length !== archived.length)
+      await registry.setState!({ ...state, archivedSessionIds: next })
+  })
   return { ok: true as const }
 }
 
-/** 归档整个工作区组：为该组的每个会话写入记录（含位置锚点）。 */
-async function archiveWorkspace(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<ArchivedListPayload> {
-  const workspaceId = String(body.workspaceId ?? '')
-  const sessionIds = Array.isArray(body.sessionIds) ? body.sessionIds.map(String) : []
-  if (!workspaceId)
-    throw new Error('缺少 workspaceId')
-  const archive = loadArchive(dshHome)
-  // beforeSessionId = 该子会话在组内顺序中的上一个会话（insert-before 语义锚点）。
-  sessionIds.forEach((sessionId, index) => {
-    const beforeSessionId = sessionIds[index + 1]
-    archive[sessionId] = {
-      sessionId,
-      workspaceId,
-      ...(beforeSessionId ? { beforeSessionId } : {}),
-      archivedAt: archive[sessionId]?.archivedAt ?? Date.now(),
-    }
-  })
-  saveArchive(archive, dshHome)
-  return buildArchivedPayload(ctx, archive)
+/** 判断一个路径是否是存在的目录。 */
+function isDir(path: string): boolean {
+  try {
+    return readdirSync(path).length >= 0
+  }
+  catch {
+    return false
+  }
 }
 
-/** 删除全部归档记录（清空归档，全部会话回到其原组）。 */
-function clearArchive(dshHome: string): { ok: true } {
-  saveArchive({}, dshHome)
+/** Encode the session id exactly as the JSONL persistence backend does. */
+function encodeSessionId(id: string): string {
+  if (id === '.')
+    return '~002E'
+  if (id === '..')
+    return '~002E~002E'
+  let encoded = ''
+  for (let index = 0; index < id.length; index++) {
+    const code = id.charCodeAt(index)
+    const char = String.fromCharCode(code)
+    encoded += char !== '~' && /^[\w.-]$/.test(char)
+      ? char
+      : `~${code.toString(16).toUpperCase().padStart(4, '0')}`
+  }
+  return encoded
+}
+
+/**
+ * 物理删除一个会话的持久化目录（best-effort，找不到就跳过）。
+ * dsh 宿主没有公开的「删除会话」API，会话数据存放在 `$DSH_HOME/sessions/<group>/session-<id>/`；
+ * 这里做有界扫描（深度 2）命中 `session-<id>` 目录后删除。删除后宿主重启时
+ * 会从持久化重建会话索引，该会话从工作区/归档中彻底消失。
+ * @returns 是否实际删除了目录。
+ */
+function removeSessionDataDir(dshHome: string, sessionId: string): boolean {
+  const sessionsRoot = join(dshHome, 'sessions')
+  // DSH versions use either the raw id or the legacy `session-<id>` directory name.
+  const encodedId = encodeSessionId(sessionId)
+  const markers = [encodedId, `session-${sessionId}`, sessionId]
+  // 一级：sessions/<id> or sessions/session-<id>
+  for (const marker of markers) {
+    const direct = join(sessionsRoot, marker)
+    if (isDir(direct)) {
+      rmSync(direct, { recursive: true, force: true })
+      return true
+    }
+  }
+  // 二级：sessions/<group>/session-<id>
+  let groups: string[] = []
+  try {
+    groups = readdirSync(sessionsRoot, { withFileTypes: true })
+      .filter(entry => entry.isDirectory())
+      .map(entry => entry.name)
+  }
+  catch {
+    return false
+  }
+  for (const group of groups) {
+    for (const marker of markers) {
+      const nested = join(sessionsRoot, group, marker)
+      if (isDir(nested)) {
+        rmSync(nested, { recursive: true, force: true })
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/** 彻底删除一个归档会话（从归档集合移除 + 物理删除会话数据）。 */
+async function permanentlyDeleteSession(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
+  const sessionId = String(body.sessionId ?? '')
+  if (!sessionId)
+    throw new Error('缺少 sessionId')
+  const sessions = ctx.sessions as SessionStoreSurface | undefined
+  const live = sessions?.get?.(sessionId)
+  if (live) {
+    if (!sessions?.remove)
+      throw new Error('宿主未提供 SessionStore.remove，请先更新桌面壳')
+    if (!sessions.remove(sessionId))
+      throw new Error(`无法从内存会话中移除 '${sessionId}'`)
+  }
+  await removeSessionFromWorkspaceAccounting(ctx, [sessionId])
+  await updateRegistryArchiveSet(ctx, ids => ids.filter(id => id !== sessionId))
+  const removed = removeSessionDataDir(dshHome, sessionId)
+  ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] permanently deleted session '${sessionId}' (data removed: ${removed})`)
+  return { ok: true as const }
+}
+
+/** 彻底删除全部已归档会话（清空归档集合 + 逐个物理删除会话数据）。 */
+async function permanentlyDeleteAll(ctx: HostContext, dshHome: string): Promise<{ ok: true }> {
+  const registry = ctx.workspaceRegistry as { archivedSessionIds?: readonly string[] } | undefined
+  const ids = [...(registry?.archivedSessionIds ?? [])]
+  const sessions = ctx.sessions as SessionStoreSurface | undefined
+  for (const sessionId of ids) {
+    if (sessions?.get?.(sessionId)) {
+      if (!sessions.remove)
+        throw new Error('宿主未提供 SessionStore.remove，请先更新桌面壳')
+      if (!sessions.remove(sessionId))
+        throw new Error(`无法从内存会话中移除 '${sessionId}'`)
+    }
+  }
+  await removeSessionFromWorkspaceAccounting(ctx, ids)
+  await updateRegistryArchiveSet(ctx, () => [])
+  let removed = 0
+  for (const sessionId of ids) {
+    if (removeSessionDataDir(dshHome, sessionId))
+      removed += 1
+  }
+  ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] permanently deleted ${ids.length} archived session(s) (data removed: ${removed})`)
   return { ok: true as const }
 }
 
 /**
- * 清理僵尸归档：归档会话的工作目录（header.cwd）已不存在时，该会话成为
- * 「会话存在但目录已不存在」的僵尸 —— 从插件归档集合中剔除其记录。
- * @returns 被清除的会话 id。
+ * 一次性迁移旧版插件自持归档（`$DSH_HOME/dsh-tauri-session/archive.json`）到宿主
+ * 归档集合。迁移成功的记录从旧文件中移除；仍失败的（如会话已不存在）保留在旧
+ * 文件中，下次启动幂等重试 —— 绝不因单次失败丢弃用户数据。
  */
-function pruneZombieArchives(ctx: HostContext, dshHome: string): string[] {
-  const archive = loadArchive(dshHome)
-  const removed: string[] = []
-  for (const sessionId of Object.keys(archive)) {
-    const session = findSession(ctx, sessionId)
-    const cwd = sessionCwd(session)
-    // 只有确实能确定目录已不存在时才清理；未知状态（会话无 cwd 或查不到）
-    // 保守保留，避免误删仍在持久化中的会话。
-    if (cwd && !existsSync(cwd)) {
-      delete archive[sessionId]
-      removed.push(sessionId)
+async function migrateLegacyArchive(ctx: HostContext, dshHome: string): Promise<void> {
+  const legacy = loadArchive(dshHome)
+  const sessionIds = Object.keys(legacy)
+  if (sessionIds.length === 0)
+    return
+  let migrated = 0
+  const failed: string[] = []
+  for (const sessionId of sessionIds) {
+    try {
+      await ctx.workspaceRegistry?.archiveSession?.(sessionId)
+      migrated += 1
+    }
+    catch {
+      failed.push(sessionId)
     }
   }
-  if (removed.length > 0)
-    saveArchive(archive, dshHome)
-  return removed
+  try {
+    if (failed.length === 0) {
+      rmSync(join(sessionStateDir(dshHome), SESSION_ARCHIVE_FILE), { force: true })
+    }
+    else {
+      // 只保留未迁移成功的记录，避免下次启动重复迁移已成功的会话。
+      const remaining: ArchiveDocument = {}
+      for (const sessionId of failed)
+        remaining[sessionId] = legacy[sessionId]
+      saveArchive(remaining, dshHome)
+    }
+  }
+  catch {
+    // 旧文件整理失败不影响新机制（下次启动会再尝试迁移）。
+  }
+  ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] migrated ${migrated}/${sessionIds.length} legacy archived session(s) into the host registry`)
 }
 
 /** 构建路由列表。 */
-export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
-  const dshHome = resolveDshHome(config)
-
+export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
   return [
     {
       kind: 'exact',
       path: `${API_PREFIX}/archived`,
-      handler: routeHandler(async () => [200, buildArchivedPayload(ctx, loadArchive(dshHome))]),
+      handler: routeHandler(async () => [200, buildArchivedPayload(ctx)]),
     },
     {
       kind: 'exact',
       path: `${API_PREFIX}/archive`,
-      handler: routeHandler(async body => [200, await archiveSession(ctx, dshHome, body)], { mutate: true }),
+      handler: routeHandler(async body => [200, await archiveSession(ctx, body)], { mutate: true }),
     },
     {
       kind: 'exact',
       path: `${API_PREFIX}/archive-workspace`,
-      handler: routeHandler(async body => [200, await archiveWorkspace(ctx, dshHome, body)], { mutate: true }),
+      handler: routeHandler(async body => [200, await archiveWorkspace(ctx, body)], { mutate: true }),
     },
     {
       kind: 'exact',
       path: `${API_PREFIX}/unarchive`,
-      handler: routeHandler(async body => [200, unarchiveSession(dshHome, body)], { mutate: true }),
+      handler: routeHandler(async body => [200, await unarchiveSession(ctx, body)], { mutate: true }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/delete`,
+      handler: routeHandler(async body => [200, await permanentlyDeleteSession(ctx, dshHome, body)], { mutate: true }),
     },
     {
       kind: 'exact',
       path: `${API_PREFIX}/clear`,
-      handler: routeHandler(async () => [200, clearArchive(dshHome)], { mutate: true }),
-    },
-    {
-      kind: 'exact',
-      path: `${API_PREFIX}/prune`,
-      handler: routeHandler(async () => [200, { removed: pruneZombieArchives(ctx, dshHome) }], { mutate: true }),
+      handler: routeHandler(async () => [200, await permanentlyDeleteAll(ctx, dshHome)], { mutate: true }),
     },
   ]
 }
 
 /**
- * 插件体：注册 HTTP 路由，并在初始化时清理僵尸归档。
+ * 插件体：迁移旧版归档 + 注册 HTTP 路由。
  * @param ctx - 宿主根上下文（注入 webServer/sessions/workspaceRegistry）。
- * @param config - 插件行配置（dshHome 等）。
+ * @param config - 插件行配置（dshHome 等，仅用于旧版归档迁移路径）。
  */
 export function apply(ctx: HostContext, config: PluginConfig = {}): void {
   const cfg = config ?? {}
   const dshHome = resolveDshHome(cfg)
 
-  // 初始化时自动清理僵尸会话（归档记录对应的工作目录已不存在）。
+  // 旧版自持归档一次性迁入宿主集合（幂等：文件不存在或为空则直接跳过）。
   ctx.effect(() => {
-    const removed = pruneZombieArchives(ctx, dshHome)
-    if (removed.length > 0)
-      ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] pruned ${removed.length} zombie archived session(s)`)
-  }, `${SESSION_PLUGIN_NAME}: prune zombie archives`)
+    void migrateLegacyArchive(ctx, dshHome)
+  }, `${SESSION_PLUGIN_NAME}: migrate legacy archive`)
 
-  // HTTP 路由注册（客户端经此调用 list/archive/unarchive/...）。
+  // HTTP 路由注册（客户端经此调用 archived/archive/unarchive/delete/clear）。
   ctx.effect(() => {
-    const disposers = buildRoutes(ctx, cfg).map(route => ctx.webServer.register(route))
+    const disposers = buildRoutes(ctx, dshHome).map(route => ctx.webServer.register(route))
     return () => {
       for (const dispose of disposers)
         dispose()
