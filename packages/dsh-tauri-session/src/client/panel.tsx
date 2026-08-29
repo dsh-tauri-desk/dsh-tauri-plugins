@@ -149,7 +149,7 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
 
   const visible = ui.workspaceId === 'all'
     ? filtered
-    : filtered.filter(row => row.workspaceId === ui.workspaceId)
+    : filtered.filter(row => ui.workspaceId === 'ungrouped' ? !row.workspaceId : row.workspaceId === ui.workspaceId)
 
   const groups = groupArchive(visible, ui.sort, text('ungrouped'))
 
@@ -241,6 +241,7 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
           options={[
             { id: 'all', label: text('allProjects') },
             ...[...projectOptions(rows).entries()].map(([id, title]) => ({ id, label: title })),
+            ...(rows.some(row => !row.workspaceId) ? [{ id: 'ungrouped', label: text('ungrouped') }] : []),
           ]}
         />
       </div>
@@ -262,42 +263,40 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
                 {' '}
                 {text('chats')}
               </span>
-              {group.id !== 'ungrouped' && (
-                <Menu
-                  open={openGroupMenu === group.id}
-                  onClose={() => setOpenGroupMenu(null)}
-                  onSelect={(id) => {
-                    setOpenGroupMenu(null)
-                    if (id === 'delete') {
-                      setConfirm({
-                        kind: 'workspace',
-                        workspaceTitle: group.title,
-                        sessionIds: rows.filter(row => row.workspaceId === group.id).map(row => row.sessionId),
-                      })
-                    }
-                  }}
-                  items={[{
-                    id: 'delete',
-                    label: text('deleteProjectChats'),
-                    icon: <IconTrashBin />,
-                    danger: true,
-                  } satisfies MenuEntry]}
-                  portal
-                  align="end"
-                  anchor={(
-                    <button
-                      type="button"
-                      className={K.groupMenuTrigger}
-                      aria-label={text('groupMenuAria')}
-                      aria-haspopup="menu"
-                      aria-expanded={openGroupMenu === group.id}
-                      onClick={() => setOpenGroupMenu(openGroupMenu === group.id ? null : group.id)}
-                    >
-                      <IconEllipsis />
-                    </button>
-                  )}
-                />
-              )}
+              <Menu
+                open={openGroupMenu === group.id}
+                onClose={() => setOpenGroupMenu(null)}
+                onSelect={(id) => {
+                  setOpenGroupMenu(null)
+                  if (id === 'delete') {
+                    setConfirm({
+                      kind: 'workspace',
+                      workspaceTitle: group.title || text('ungrouped'),
+                      sessionIds: rows.filter(row => group.id === 'ungrouped' ? !row.workspaceId : row.workspaceId === group.id).map(row => row.sessionId),
+                    })
+                  }
+                }}
+                items={[{
+                  id: 'delete',
+                  label: text('deleteProjectChats'),
+                  icon: <IconTrashBin />,
+                  danger: true,
+                } satisfies MenuEntry]}
+                portal
+                align="end"
+                anchor={(
+                  <button
+                    type="button"
+                    className={K.groupMenuTrigger}
+                    aria-label={text('groupMenuAria')}
+                    aria-haspopup="menu"
+                    aria-expanded={openGroupMenu === group.id}
+                    onClick={() => setOpenGroupMenu(openGroupMenu === group.id ? null : group.id)}
+                  >
+                    <IconEllipsis />
+                  </button>
+                )}
+              />
             </div>
             <ul className={K.list}>
               {group.rows.map(row => (
