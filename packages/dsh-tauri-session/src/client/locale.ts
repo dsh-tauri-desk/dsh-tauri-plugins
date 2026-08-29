@@ -41,6 +41,9 @@ const DICT_ZH = {
   loading: '处理中…',
   unarchivedToast: '对话已取消归档',
   view: '查看',
+  untitled: '未命名会话',
+  requestFailed: '请求失败 ({status})',
+  requestTimeout: '请求超时，请检查会话插件是否已加载最新版本',
 } as const satisfies Record<LocaleKey, string>
 
 /** en 字典，与 zh 键集完全一致（locale 运行时强制双语平衡）。 */
@@ -74,10 +77,18 @@ const DICT_EN: Record<LocaleKey, string> = {
   loading: 'Working…',
   unarchivedToast: 'Chat unarchived',
   view: 'View',
+  untitled: 'Untitled session',
+  requestFailed: 'Request failed ({status})',
+  requestTimeout: 'Request timed out. Check that the session plugin is up to date.',
 }
 
 /** 活跃语言 id（module 级缓存，apply 时初始化并由订阅推进）。 */
 let activeLocale = 'en'
+
+/** 当前是否使用英文界面（格式化函数读取，避免导出可变绑定）。 */
+export function isEnglishLocale(): boolean {
+  return activeLocale === 'en'
+}
 
 /** locale 变更推进器：revision 前进 -> uSES 订阅方重渲染。 */
 export const localeRev = createSnapshotStore({ rev: 0 })

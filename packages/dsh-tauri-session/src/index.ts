@@ -25,7 +25,7 @@ import type {
 } from './types.js'
 import { readdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { SESSION_API_PREFIX, SESSION_ARCHIVE_FILE, SESSION_PLUGIN_NAME } from './constants.js'
 import { routeHandler } from './http.js'
@@ -83,7 +83,7 @@ async function archiveSession(ctx: HostContext, body: Record<string, unknown>): 
   const sessionId = String(body.sessionId ?? '')
   if (!sessionId)
     throw new Error('缺少 sessionId')
-  await ctx.workspaceRegistry?.archiveSession?.(sessionId)
+  await requireArchiveSession(ctx)(sessionId)
   return buildArchivedPayload(ctx)
 }
 
@@ -92,8 +92,9 @@ async function archiveWorkspace(ctx: HostContext, body: Record<string, unknown>)
   const sessionIds = Array.isArray(body.sessionIds) ? body.sessionIds.map(String) : []
   if (sessionIds.length === 0)
     throw new Error('缺少 sessionIds')
+  const archiveSession = requireArchiveSession(ctx)
   for (const sessionId of sessionIds)
-    await ctx.workspaceRegistry?.archiveSession?.(sessionId)
+    await archiveSession(sessionId)
   return buildArchivedPayload(ctx)
 }
 
@@ -123,6 +124,14 @@ function registryArchiveSurface(ctx: HostContext): RegistryArchiveSurface {
   if (!registry || typeof registry.enqueueOperation !== 'function' || typeof registry.requireState !== 'function' || typeof registry.setState !== 'function')
     throw new Error('宿主 workspaceRegistry 未暴露归档集合的变更接口（宿主版本不兼容）')
   return registry
+}
+
+/** 归档所需方法缺失时报错，绝不静默跳过（否则迁移会误删旧记录）。 */
+function requireArchiveSession(ctx: HostContext): (sessionId: string) => Promise<void> {
+  const archiveSession = ctx.workspaceRegistry?.archiveSession
+  if (typeof archiveSession !== 'function')
+    throw new Error('宿主 workspaceRegistry 未提供 archiveSession（宿主版本不兼容）')
+  return archiveSession.bind(ctx.workspaceRegistry) as (sessionId: string) => Promise<void>
 }
 
 /** Remove a session from every workspace accounting slot before physical deletion. */
@@ -197,8 +206,22 @@ function isDir(path: string): boolean {
   }
 }
 
+/** 规范化路径是否严格位于 sessionsRoot 之内（防 `..`/绝对路径逃逸）。 */
+export function isWithinSessionsRoot(sessionsRoot: string, candidate: string): boolean {
+  const root = resolve(sessionsRoot)
+  const target = resolve(candidate)
+  return target === root || target.startsWith(`${root}${sep}`)
+}
+
+/** 会话 id 是否为归档集合成员（删除的授权边界）。 */
+function requireArchivedMember(ctx: HostContext, sessionId: string): void {
+  const registry = ctx.workspaceRegistry as { archivedSessionIds?: readonly string[] } | undefined
+  if (!registry?.archivedSessionIds?.includes(sessionId))
+    throw new Error(`会话 '${sessionId}' 不在归档集合中，拒绝删除`)
+}
+
 /** Encode the session id exactly as the JSONL persistence backend does. */
-function encodeSessionId(id: string): string {
+export function encodeSessionId(id: string): string {
   if (id === '.')
     return '~002E'
   if (id === '..')
@@ -229,7 +252,7 @@ function removeSessionDataDir(dshHome: string, sessionId: string): boolean {
   // 一级：sessions/<id> or sessions/session-<id>
   for (const marker of markers) {
     const direct = join(sessionsRoot, marker)
-    if (isDir(direct)) {
+    if (isWithinSessionsRoot(sessionsRoot, direct) && isDir(direct)) {
       rmSync(direct, { recursive: true, force: true })
       return true
     }
@@ -247,7 +270,7 @@ function removeSessionDataDir(dshHome: string, sessionId: string): boolean {
   for (const group of groups) {
     for (const marker of markers) {
       const nested = join(sessionsRoot, group, marker)
-      if (isDir(nested)) {
+      if (isWithinSessionsRoot(sessionsRoot, nested) && isDir(nested)) {
         rmSync(nested, { recursive: true, force: true })
         return true
       }
@@ -256,46 +279,58 @@ function removeSessionDataDir(dshHome: string, sessionId: string): boolean {
   return false
 }
 
-/** 彻底删除一个归档会话（从归档集合移除 + 物理删除会话数据）。 */
+/** 验证删除所需宿主面齐全；缺失时在变更前报错，保证可重试。 */
+function requireDeletionSurfaces(ctx: HostContext, sessionIds: readonly string[]): { sessions: SessionStoreSurface | undefined } {
+  registryArchiveSurface(ctx)
+  const registry = ctx.workspaceRegistry as unknown as RegistryArchiveSurface | undefined
+  if (!registry?.requireTable)
+    throw new Error('宿主 workspaceRegistry 未暴露工作区会话记账接口（宿主版本不兼容）')
+  const sessions = ctx.sessions as SessionStoreSurface | undefined
+  for (const sessionId of sessionIds) {
+    if (sessions?.get?.(sessionId) && !sessions.remove)
+      throw new Error('宿主未提供 SessionStore.remove，请先更新桌面壳')
+  }
+  return { sessions }
+}
+
+/** 从内存会话 store 移除（best-effort：live 会话必须成功）。 */
+function removeLiveSessions(sessions: SessionStoreSurface | undefined, sessionIds: readonly string[]): void {
+  for (const sessionId of sessionIds) {
+    if (sessions?.get?.(sessionId) && !sessions.remove?.(sessionId))
+      throw new Error(`无法从内存会话中移除 '${sessionId}'`)
+  }
+}
+
+/** 彻底删除一个归档会话（成员校验 + 物理删除 + 记账更新）。 */
 async function permanentlyDeleteSession(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
   const sessionId = String(body.sessionId ?? '')
   if (!sessionId)
     throw new Error('缺少 sessionId')
-  const sessions = ctx.sessions as SessionStoreSurface | undefined
-  const live = sessions?.get?.(sessionId)
-  if (live) {
-    if (!sessions?.remove)
-      throw new Error('宿主未提供 SessionStore.remove，请先更新桌面壳')
-    if (!sessions.remove(sessionId))
-      throw new Error(`无法从内存会话中移除 '${sessionId}'`)
-  }
+  requireArchivedMember(ctx, sessionId)
+  const { sessions } = requireDeletionSurfaces(ctx, [sessionId])
+  // 先物理删除，再更新记账：物理删除失败时归档集合未动，会话仍可寻址重试。
+  const removed = removeSessionDataDir(dshHome, sessionId)
+  removeLiveSessions(sessions, [sessionId])
   await removeSessionFromWorkspaceAccounting(ctx, [sessionId])
   await updateRegistryArchiveSet(ctx, ids => ids.filter(id => id !== sessionId))
-  const removed = removeSessionDataDir(dshHome, sessionId)
-  ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] permanently deleted session '${sessionId}' (data removed: ${removed})`)
+  ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] permanently deleted archived session (data removed: ${removed})`)
   return { ok: true as const }
 }
 
-/** 彻底删除全部已归档会话（清空归档集合 + 逐个物理删除会话数据）。 */
+/** 彻底删除全部已归档会话（先物理删除全部，再批量更新记账）。 */
 async function permanentlyDeleteAll(ctx: HostContext, dshHome: string): Promise<{ ok: true }> {
   const registry = ctx.workspaceRegistry as { archivedSessionIds?: readonly string[] } | undefined
   const ids = [...(registry?.archivedSessionIds ?? [])]
-  const sessions = ctx.sessions as SessionStoreSurface | undefined
-  for (const sessionId of ids) {
-    if (sessions?.get?.(sessionId)) {
-      if (!sessions.remove)
-        throw new Error('宿主未提供 SessionStore.remove，请先更新桌面壳')
-      if (!sessions.remove(sessionId))
-        throw new Error(`无法从内存会话中移除 '${sessionId}'`)
-    }
-  }
-  await removeSessionFromWorkspaceAccounting(ctx, ids)
-  await updateRegistryArchiveSet(ctx, () => [])
+  const { sessions } = requireDeletionSurfaces(ctx, ids)
   let removed = 0
+  // 全部先物理删除：任一会话目录删除失败即中止，归档集合保持不变可重试。
   for (const sessionId of ids) {
     if (removeSessionDataDir(dshHome, sessionId))
       removed += 1
   }
+  removeLiveSessions(sessions, ids)
+  await removeSessionFromWorkspaceAccounting(ctx, ids)
+  await updateRegistryArchiveSet(ctx, () => [])
   ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] permanently deleted ${ids.length} archived session(s) (data removed: ${removed})`)
   return { ok: true as const }
 }
@@ -312,13 +347,23 @@ async function migrateLegacyArchive(ctx: HostContext, dshHome: string): Promise<
     return
   let migrated = 0
   const failed: string[] = []
-  for (const sessionId of sessionIds) {
-    try {
-      await ctx.workspaceRegistry?.archiveSession?.(sessionId)
-      migrated += 1
-    }
-    catch {
-      failed.push(sessionId)
+  let archiveSession: ((sessionId: string) => Promise<void>) | undefined
+  try {
+    archiveSession = requireArchiveSession(ctx)
+  }
+  catch {
+    // 宿主不提供 archiveSession 时保留全部旧记录，下次启动重试，绝不误删。
+    failed.push(...sessionIds)
+  }
+  if (archiveSession) {
+    for (const sessionId of sessionIds) {
+      try {
+        await archiveSession(sessionId)
+        migrated += 1
+      }
+      catch {
+        failed.push(sessionId)
+      }
     }
   }
   try {

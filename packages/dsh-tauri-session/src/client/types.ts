@@ -156,3 +156,6 @@ export type LocaleKey
     | 'loading'
     | 'unarchivedToast'
     | 'view'
+    | 'untitled'
+    | 'requestFailed'
+    | 'requestTimeout'

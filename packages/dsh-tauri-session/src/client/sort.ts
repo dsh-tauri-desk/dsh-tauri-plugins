@@ -44,7 +44,7 @@ function groupSortValue(rows: ArchiveRow[], sort: ArchiveSort): number | string 
   if (sort === 'title')
     return rows.reduce<string>((min, row) => (row.title.toLowerCase() < min ? row.title.toLowerCase() : min), rows[0]?.title.toLowerCase() ?? '')
   if (sort === 'createdAt')
-    return rows.reduce<number>((min, row) => Math.min(min, row.createdAt ?? Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER)
+    return rows.reduce<number>((min, row) => Math.min(min, row.createdAt ?? 0), Number.MAX_SAFE_INTEGER)
   return rows.reduce<number>((max, row) => Math.max(max, row.updatedAt ?? 0), 0)
 }
 

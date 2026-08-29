@@ -56,4 +56,14 @@ describe('groupArchive', () => {
     const w1 = groups.find(g => g.id === 'w1')
     expect(w1?.rows.map(r => r.sessionId)).toEqual(['s1', 's2'])
   })
+
+  it('ranks groups with no creation timestamps after dated groups', () => {
+    const mixed: ArchiveRow[] = [
+      ...rows,
+      row({ sessionId: 'undated', title: '未标注时间', workspaceId: 'w2', workspaceTitle: 'Undated' }),
+    ]
+    const groups = groupArchive(mixed, 'createdAt', '未分组')
+    // w2 全部成员无 createdAt → 组聚合值 0，降序时应排在最后。
+    expect(groups[groups.length - 1].id).toBe('w2')
+  })
 })

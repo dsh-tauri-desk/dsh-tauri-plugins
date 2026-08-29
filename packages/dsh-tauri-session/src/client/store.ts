@@ -13,6 +13,7 @@ import type { ArchivedListPayload, ArchiveSort, ArchiveUiState } from './types'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { useSyncExternalStore } from 'react'
 import { SESSION_API_PREFIX } from './constants'
+import { text } from './locale'
 
 export type { ArchivedListPayload, ArchiveUiState } from './types'
 
@@ -34,12 +35,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     })
     const body = await res.json().catch(() => ({} as { error?: string })) as T & { error?: string }
     if (!res.ok)
-      throw new Error(body.error ?? `请求失败 (${res.status})`)
+      throw new Error(body.error ?? text('requestFailed', { status: res.status }))
     return body as T
   }
   catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError')
-      throw new Error('请求超时，请检查会话插件是否已加载最新版本')
+      throw new Error(text('requestTimeout'))
     throw error
   }
   finally {

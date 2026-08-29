@@ -95,7 +95,9 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
   let pendingGroup: Element | undefined
   let dialogRoot: Root | undefined
   let dialogHost: HTMLDivElement | undefined
-  const itemCleanups: Array<() => void> = []
+  /** 菜单条目清理器：与条目元素关联，元素脱离文档后即被丢弃。 */
+  const itemCleanups: Array<{ element: HTMLElement, cleanup: () => void }> = []
+  const rowCleanups: Array<() => void> = []
 
   function closeDialog(): void {
     dialogRoot?.unmount()
@@ -105,6 +107,8 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
   }
 
   function openArchiveDialog(sessionIds: string[]): void {
+    // 先关闭可能残留的旧对话框，避免宿主节点与 React root 泄漏。
+    closeDialog()
     const workspaceId = resolveWorkspaceId(workspacesRuntime, sessionIds)
     const workspace = workspacesRuntime.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
     const workspaceTitle = workspace?.title ?? workspace?.path.split(/[\\/]/).pop() ?? text('ungrouped')
@@ -141,7 +145,12 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     if (!ellipsis || ellipsis.hasAttribute(WORKSPACE_MENU_ANCHOR_ATTRIBUTE))
       return
     ellipsis.setAttribute(WORKSPACE_MENU_ANCHOR_ATTRIBUTE, '1')
-    ellipsis.addEventListener('click', () => recordAnchor(ellipsis), { capture: true })
+    const onAnchorClick = (): void => recordAnchor(ellipsis)
+    ellipsis.addEventListener('click', onAnchorClick, { capture: true })
+    rowCleanups.push(() => {
+      ellipsis.removeEventListener('click', onAnchorClick, { capture: true })
+      ellipsis.removeAttribute(WORKSPACE_MENU_ANCHOR_ATTRIBUTE)
+    })
   }
 
   /** 改写一个 portal 菜单里的「删除工作区」条目并拦截其点击。 */
@@ -173,10 +182,11 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     const onLeave = (): void => item.style.setProperty('background', 'transparent', 'important')
     item.addEventListener('mouseenter', onEnter)
     item.addEventListener('mouseleave', onLeave)
-    itemCleanups.push(() => {
+    const cleanup = (): void => {
       item.removeEventListener('mouseenter', onEnter)
       item.removeEventListener('mouseleave', onLeave)
-    })
+    }
+    itemCleanups.push({ element: item, cleanup })
     const onClick = (event: MouseEvent): void => {
       event.preventDefault()
       event.stopImmediatePropagation()
@@ -192,11 +202,16 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
       document.dispatchEvent(new PointerCtor('pointerdown', { bubbles: true, cancelable: true }))
     }
     item.addEventListener('click', onClick, { capture: true })
-    itemCleanups.push(() => item.removeEventListener('click', onClick, { capture: true }))
+    itemCleanups.push({ element: item, cleanup: () => item.removeEventListener('click', onClick, { capture: true }) })
   }
 
   /** 全量扫描：项目行记录监听 + portal 菜单条目改写。 */
   function scan(): void {
+    // 丢弃已脱离文档的菜单条目清理器，避免数组随菜单反复开关无限增长。
+    for (let index = itemCleanups.length - 1; index >= 0; index--) {
+      if (!itemCleanups[index].element.isConnected)
+        itemCleanups.splice(index, 1)
+    }
     const sidebar = document.querySelector<HTMLElement>(SIDEBAR_SELECTOR)
     if (sidebar) {
       for (const row of sidebar.querySelectorAll<HTMLElement>('[role="treeitem"][aria-expanded]'))
@@ -233,8 +248,12 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
   return () => {
     ro.disconnect()
     closeDialog()
-    for (const cleanup of itemCleanups)
+    for (const { cleanup } of itemCleanups)
       cleanup()
+    itemCleanups.length = 0
+    for (const cleanup of rowCleanups)
+      cleanup()
+    rowCleanups.length = 0
     if (timer !== undefined)
       clearInterval(timer)
   }

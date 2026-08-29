@@ -20,7 +20,7 @@ import { Button, Input, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { SESSION_CLASSES as K } from './constants'
 import { IconFolderOpen, IconMagnifier, IconTrashBin } from './icons'
-import { text, useLocale } from './locale'
+import { isEnglishLocale, text, useLocale } from './locale'
 import { MenuSelect } from './select'
 import { groupArchive } from './sort'
 import {
@@ -87,7 +87,7 @@ function buildRows(
       workspace = byPath.get(cwd)
     rows.push({
       sessionId,
-      title: summary?.displayTitle ?? summary?.title ?? entry?.title ?? titleById[sessionId] ?? (cwd ? workspaceTitleOf(cwd) : undefined) ?? '未命名会话',
+      title: summary?.displayTitle ?? summary?.title ?? entry?.title ?? titleById[sessionId] ?? (cwd ? workspaceTitleOf(cwd) : undefined) ?? text('untitled'),
       cwd,
       createdAt: entry?.createdAt,
       updatedAt: summary?.updatedAt,
@@ -239,7 +239,7 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
       {ui.error && <div className={K.error}>{ui.error}</div>}
 
       {!ui.loading && visible.length === 0 && (
-        <div className={K.empty}>{text('empty')}</div>
+        <div className={K.empty}>{query ? text('noResults') : text('empty')}</div>
       )}
 
       <div className={K.groups}>
@@ -323,5 +323,8 @@ function formatTime(row: ArchiveRow): string {
     return ''
   const d = new Date(value)
   const pad = (n: number): string => String(n).padStart(2, '0')
-  return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月${pad(d.getDate())}日, ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (isEnglishLocale()) {
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+  return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月${pad(d.getDate())}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }

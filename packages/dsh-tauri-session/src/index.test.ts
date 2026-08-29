@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { updateRegistryArchiveSet } from './index'
+import { encodeSessionId, isWithinSessionsRoot, updateRegistryArchiveSet } from './index'
 
 interface FakeRegistryState {
   initialized: boolean
@@ -72,5 +72,29 @@ describe('updateRegistryArchiveSet', () => {
 
   it('rejects when the host registry does not expose the mutation surface', async () => {
     await expect(updateRegistryArchiveSet({ workspaceRegistry: {} }, ids => ids)).rejects.toThrow('workspaceRegistry')
+  })
+})
+
+describe('isWithinSessionsRoot', () => {
+  const root = 'C:\\Users\\hairy\\.dsh\\sessions'
+
+  it('accepts direct and nested session directories below the root', () => {
+    expect(isWithinSessionsRoot(root, `${root}\\session-abc`)).toBe(true)
+    expect(isWithinSessionsRoot(root, `${root}\\--group--\\session-abc`)).toBe(true)
+  })
+
+  it('rejects traversal and absolute escapes', () => {
+    expect(isWithinSessionsRoot(root, `${root}\\..`)).toBe(false)
+    expect(isWithinSessionsRoot(root, 'C:\\Users\\hairy\\.dsh')).toBe(false)
+    expect(isWithinSessionsRoot(root, 'C:\\Windows')).toBe(false)
+  })
+})
+
+describe('encodeSessionId', () => {
+  it('escapes unsafe code units like the JSONL backend', () => {
+    expect(encodeSessionId('..')).toBe('~002E~002E')
+    expect(encodeSessionId('.')).toBe('~002E')
+    expect(encodeSessionId('a/b')).toBe('a~002Fb')
+    expect(encodeSessionId('plain-id')).toBe('plain-id')
   })
 })
