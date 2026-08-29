@@ -123,8 +123,12 @@ export interface WorktreeStatus {
   dirname?: string
   sourceSessionId?: string
   log?: string[]
-  /** 会话工作目录是否位于 git 仓库内（非 git 目录时客户端应强制本地并隐藏模式选择器）。 */
-  isGit?: boolean
+  /**
+   * 会话工作目录是否位于 git 仓库内（非 git 目录时客户端应强制本地并隐藏模式选择器）。
+   * null 表示宿主尚未解析出该会话（新建/启动竞态）：客户端保持默认 git 假设、不落库，
+   * 稍后重试，绝不据此隐藏工作树 UI。
+   */
+  isGit?: boolean | null
 }
 
 export interface WorktreeCreate {
