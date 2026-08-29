@@ -1,10 +1,10 @@
-# Manifest, Build & ctx Dependency Management
+# 清单、构建与 ctx 依赖管理
 
-## package.json `dsh` field
+## package.json 的 `dsh` 字段
 
 ```json
 {
-  "name": "dsh-tauri-session",
+  "name": "dsh-tauri-<插件名>",
   "type": "module",
   "version": "0.4.9",
   "exports": {
@@ -34,108 +34,103 @@
 }
 ```
 
-Key points:
+要点：
 
-- `"type": "module"` everywhere (repo rule).
-- Host half entry is the package root (`dist/index.js`); client half is
-  `dist/client.js` via the `./client` export.
-- `dsh.client.inject` lists client-half runtime dependencies for bundling.
-- `dsh.client.platform` is `"web"`.
-- `dsh.bundle.patch` points at the profile patch file.
-- The `dsh` field is how the harness loader discovers and mounts the plugin.
+- 全仓库 `"type": "module"`。
+- 宿主半区入口是包根（`dist/index.js`）；客户端半区经 `./client` 导出
+  （`dist/client.js`）。
+- `dsh.client.inject` 列出客户端半区运行时依赖供打包。
+- `dsh.client.platform` 为 `"web"`。
+- `dsh.bundle.patch` 指向 profile 补丁文件。
+- `dsh` 字段是 harness 加载器发现并挂载插件的方式。
 
 ## cordis.patch.yml
 
-Minimal insertion rows for the profile loader:
+profile 加载器的最小插入行：
 
 ```yaml
 - insert:
-    - id: dsh-tauri-session
-      name: dsh-tauri-session
+    - id: dsh-tauri-<插件名>
+      name: dsh-tauri-<插件名>
 ```
 
-The desktop shell also uses patch rows for other purposes (e.g.
-`win_inspector.rs` writes profile `cordis.patch.yml` mount lines). Keep the
-plugin's own patch file minimal: id + name.
+桌面壳也用补丁行做其他用途（如 Windows 极简模式修复写入 profile
+`cordis.patch.yml` 挂载行）。插件自己的补丁文件保持最小：id + name。
 
-## Build pipeline (tsdown)
+## 构建流水线（tsdown）
 
-- `tsdown` builds both halves: `dist/index.js` (ESM host) and `dist/client.js`
-  (CJS browser bundle with `window.__ModuleLoader__.load({id, factory})`).
-- `dev` runs `tsdown --watch`.
-- Desktop debug builds link plugin sources from a resource directory without
-  node_modules; host halves resolve DSH-owned packages through the platform
-  loader (`ctx.loader.import`), see dsh-tauri-panel-extension.
-- After changing a plugin: rebuild (`pnpm -F <name> build`) and restart the
-  desktop shell — page refresh alone does not reload the host half. Client
-  bundles may hot-reload in dev via `pnpm run dev:web` from the dsh checkout.
+- `tsdown` 构建两个半区：`dist/index.js`（ESM 宿主）与 `dist/client.js`
+  （CJS 浏览器包，`window.__ModuleLoader__.load({id, factory})`）。
+- `dev` 运行 `tsdown --watch`。
+- 桌面 debug 构建从资源目录链接插件源码（无 node_modules）；宿主半区经平台
+  加载器（`ctx.loader.import`）解析 DSH 自有包。
+- 修改插件后：重建（`pnpm -F <名称> build`）并**重启桌面壳**——仅刷新页面
+  不会重载宿主半区。客户端 bundle 在 dev 下可热更新。
 
-## ctx dependency management (in depth)
+## ctx 依赖管理（深入）
 
-### inject (declarative)
+### inject（声明式）
 
 ```ts
 export const inject = ['webServer', 'sessions']
 ```
 
-Plugin `apply` waits until all named services exist. List **every** service
-touched in `apply` — an undeclared `ctx.foo` access yields `undefined` and a
-runtime failure, not a type error (host seams use `any`).
+插件 `apply` 会等待所有命名服务存在。**列出 `apply` 中触碰的每个服务**——
+未声明的 `ctx.foo` 访问得到 `undefined` 与运行时错误，而非类型错误（宿主
+接缝用 `any`）。
 
-### ctx.inject (lazy/optional)
+### ctx.inject（惰性/可选）
 
 ```ts
 ctx.inject(['webServer', 'skills'], (hostCtx) => { ... })
 ```
 
-Callback runs once the services are available; useful when a capability is
-optional and the plugin should still mount without it.
+服务可用后运行回调；适用于能力可选、插件仍应在缺失时挂载的场景。
 
-### ctx.effect (disposable side effects)
+### ctx.effect（可释放副作用）
 
 ```ts
 ctx.effect(() => {
   const disposer = doSomething()
-  return disposer          // called on unload/reload
-}, 'my-plugin: label')
+  return disposer          // 卸载/reload 时调用
+}, 'my-plugin: 标签')
 ```
 
-Return value may be a disposer or an iterable of disposers (disposed in
-reverse). Use one effect per cohesive concern with a stable label. Never
-register a global side effect outside an effect.
+返回值可以是 disposer 或 disposer 的可迭代集合（逆序释放）。每个内聚关注点
+用一个 effect，带稳定标签。绝不在 effect 外注册全局副作用。
 
-### ctx.on / event subscription
+### ctx.on / 事件订阅
 
 ```ts
 ctx.on('session/event', (session, event) => { ... })
 ```
 
-Returns a disposer; prefer `ctx.effect(() => ctx.on(...))` so it unwinds.
+返回 disposer；优先用 `ctx.effect(() => ctx.on(...))` 使其正确回滚。
 
-### Events by dispatch mode
+### 按分发模式分类的事件
 
-- emit: `session/created`, `session/disposed`, `session/event`,
-  `agent/created`, `agent/disposed`, `agent/error`, `agent/status`,
-  `system-prompt/change`, `skills/change`, `webserver/index-inject`
-- waterfall: `system-prompt/assemble`, `tools/pre-execute`
-- parallel: `session/flush`
-- serial/bail: policy events
+- emit：`session/created`、`session/disposed`、`session/event`、
+  `agent/created`、`agent/disposed`、`agent/error`、`agent/status`、
+  `system-prompt/change`、`skills/change`、`webserver/index-inject`
+- waterfall：`system-prompt/assemble`、`tools/pre-execute`
+- parallel：`session/flush`
+- serial/bail：策略类事件
 
-### Scoping
+### 作用域
 
-- Host: `ctx.agents.withInitiator(agent, op)` / `withoutInitiator(op)` for
-  initiator attribution.
-- Client: `ctx.sessions.scope(id)` / `scopeOf(ctx)` / `sessionOf(ctx)` /
-  `binding(id)`; agent-scoped contexts carry `scope.session`.
+- 宿主：`ctx.agents.withInitiator(agent, op)` / `withoutInitiator(op)` 做
+  发起者归属。
+- 客户端：`ctx.sessions.scope(id)` / `scopeOf(ctx)` / `sessionOf(ctx)` /
+  `binding(id)`；agent 作用域上下文携带 `scope.session`。
 
-## Common failure modes
+## 常见失败模式
 
-| Symptom | Likely cause |
+| 现象 | 可能原因 |
 |---------|--------------|
-| 404 on `/api/<plugin>/...` | Host half not loaded / stale dist / route not registered / wrong path prefix / wrong port |
-| 405 | Method mismatch (GET vs POST on mutate route) |
-| 403 | Non-loopback caller on mutate route |
-| Route works but UI hangs | Client waits on host RPC without timeout; add AbortController |
-| Session reappears after delete | Durable dir removed but in-memory SessionStore entry remains → needs shell-patch `remove` (see fallback.md) |
-| Styles not applied | Style id already mounted by another plugin; css-render `find()` guard |
-| Blank page | Slot registration error or missing renderer fallback |
+| `/api/<插件>/...` 404 | 宿主半区未加载 / dist 过期 / 路由未注册 / 路径前缀错误 / 端口错误 |
+| 405 | 方法不匹配（mutate 路由用了 GET） |
+| 403 | 变更路由的非回环调用方 |
+| 路由工作但 UI 卡死 | 客户端等待宿主 RPC 无超时；加 AbortController |
+| 会话删除后又出现 | 持久目录已删但内存 SessionStore 条目仍在 → 需壳补丁 `remove`（见 fallback.md） |
+| 样式不生效 | style id 已被其他插件挂载；css-render `find()` 守卫 |
+| 白屏 | slot 注册错误或渲染器 fallback 缺失 |

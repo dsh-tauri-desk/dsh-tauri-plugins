@@ -1,64 +1,62 @@
-# Client-half `ctx` Services & Slot Protocol
+# 客户端 ctx 服务与 slot 协议
 
-Client halves run inside the browser; the context is a Cordis `Context` typed
-as `ClientContext` (`@deepseek-ai/dsh-client-runtime/client`). Services are
-injected via `export const inject` and consumed through `ctx.<key>`.
+客户端半区运行在浏览器中；上下文是类型为 `ClientContext`
+（`@deepseek-ai/dsh-client-runtime/client`）的 Cordis `Context`。服务通过
+`export const inject` 注入，通过 `ctx.<key>` 消费。
 
-## Client service inventory (installed dsh release)
+## 客户端服务清单（已安装 dsh 发行版）
 
-| Service | Package | Purpose |
+| 服务 | 包 | 用途 |
 |---------|---------|---------|
-| `ctx.slots` | dsh-client-runtime | Slot registry: register/inject/install/renderSlot |
-| `ctx.sessions` | dsh-client-runtime | Session list snapshot, open/clear/search/fork/provide/scope |
-| `ctx.workspaces` | dsh-client-runtime | Workspace list snapshot, manager refresh, archiveSession |
-| `ctx.locale` | dsh-client-locale | Locale register/subscribe/getLocale |
-| `ctx.layout` | dsh-client-ui-layout | Sidebar toggle, shell chrome |
-| `ctx.renderer` (via slots) | dsh-client-ui-renderer | SlotOutlet, useHost, createSlotRenderer |
-| `ctx.remote.*` | dsh-client-connection | Wire RPC namespaces (session/workspace/...) |
+| `ctx.slots` | dsh-client-runtime | slot 注册表：register/inject/install/renderSlot |
+| `ctx.sessions` | dsh-client-runtime | 会话列表快照，open/clear/search/fork/provide/scope |
+| `ctx.workspaces` | dsh-client-runtime | 工作区列表快照，manager refresh，archiveSession |
+| `ctx.locale` | dsh-client-locale | 多语文案 register/subscribe/getLocale |
+| `ctx.layout` | dsh-client-ui-layout | 侧边栏切换、外壳 chrome |
+| `ctx.renderer`（经 slots） | dsh-client-ui-renderer | SlotOutlet、useHost、createSlotRenderer |
+| `ctx.remote.*` | dsh-client-connection | wire RPC 命名空间（session/workspace/...） |
 
 ## `ctx.slots` — SlotRegistry
 
-The single registration API is `ctx.slots.register` (typed via `SlotCore`):
+唯一注册 API 是 `ctx.slots.register`（经 `SlotCore` 类型化）：
 
 ```ts
 ctx.slots.register(
   {
-    name: SLOT_NAME,          // slot seat key, e.g. 'settings.section'
-    id: COMPONENT_ID,         // stable component id
-    registrant: PLUGIN_NAME,  // diagnostics stamp
-    order: NUMBER,            // display order
-    priority: NUMBER,         // optional, lower wins for single slots
-    inject: (props) => ({ ... }),  // optional props injection
+    name: SLOT_NAME,          // slot 座位键，如 'settings.section'
+    id: COMPONENT_ID,         // 稳定组件 id
+    registrant: PLUGIN_NAME,  // 诊断标记
+    order: NUMBER,            // 展示顺序
+    priority: NUMBER,         // 可选，single slot 中较小者胜出
+    inject: (props) => ({ ... }),  // 可选 props 注入
   },
   Component,
 )
 ```
 
-- `register` runs through the caller's `ctx.effect`, so plugin unload cascades
-  the removal — wrap it in `ctx.effect(() => ctx.slots.register(...), effectId)`.
-- `ctx.slots.inject(key, callback)` — install effect for a slot's declaration
-  lifetime (used by dsh-tauri-ui's sections projection).
-- `ctx.slots.install(renderer)` / `installLocale(face)` — boot-once shell
-  contracts; do not call from plugins.
-- `ctx.slots.renderSlot('root', owner)` — shell-only.
+- `register` 经由调用方的 `ctx.effect` 运行，因此插件卸载会级联移除——把它
+  包在 `ctx.effect(() => ctx.slots.register(...), effectId)` 内。
+- `ctx.slots.inject(key, callback)` — 为 slot 的声明生命周期安装 effect
+  （用于设置分区导航投影）。
+- `ctx.slots.install(renderer)` / `installLocale(face)` — 启动一次的外壳契约；
+  插件不要调用。
+- `ctx.slots.renderSlot('root', owner)` — 仅外壳可用。
 
-Known slot seats (from installed ui-layout/ui-sidebar/workspace packages):
+已知 slot 座位（来自已安装 ui-layout/ui-sidebar/workspace 包）：
 
-- `root` — single, DO NOT register (would shadow the whole frame)
-- `shell.overlay` — list slot, floats over the app (used by dsh-tauri-ui)
-- `sidebar.settings` — settings gear seat (dsh-tauri-ui trigger, priority -1)
-- `settings.section` — settings page sections (dsh-tauri-session archive page)
-- `settings.onboarding` — onboarding sections
-- `conversation.input.dock` — composer dock (worktree references it)
-- `sidebar` / `sidebar.workspace` — sidebar seats
+- `root` — single，**不要注册**（会遮蔽整个 frame）
+- `shell.overlay` — list slot，浮于应用之上
+- `sidebar.settings` — 设置齿轮座位
+- `settings.section` — 设置页分区
+- `settings.onboarding` — onboarding 分区
+- `conversation.input.dock` — composer 停靠位
+- `sidebar` / `sidebar.workspace` — 侧边栏座位
 
-Because `settings.section` and other UI seats are not declared in
-`dsh-client-runtime`'s SlotMap (declaration ownership lives in ui-sidebar /
-ui-layout), plugins pass the options object with an explicit `as never` cast —
-this is the established precedent in `dsh-tauri-session/src/client/index.ts`
-and `dsh-tauri-worktree`.
+由于 `settings.section` 等 UI 座位未在 `dsh-client-runtime` 的 SlotMap 中
+声明（声明权在 ui-sidebar / ui-layout），插件给选项对象加显式 `as never`
+cast——这是既有先例。
 
-## `ctx.sessions` — client sessions face (ISessions)
+## `ctx.sessions` — 客户端会话面（ISessions）
 
 ```ts
 readonly list: ObservableSnapshot<SessionListState>   // { ids, byId, current, phase }
@@ -70,60 +68,54 @@ provide(descriptor): () => void
 scope(id) / scopeOf(ctx) / sessionOf(ctx) / binding(id)
 ```
 
-`SessionListState.byId[sessionId]` carries `{ id, title, displayTitle, cwd,
-updatedAt, blank, ... }` — `blank: true` marks temporary new-session rows
-(exclude them from archive/delete counts). There is **no client-side
-refresh/delete** on the official `ISessions` face; `ctx.sessions.refresh()`
-used by dsh-tauri-session is a cast/extension — re-sync the host list instead
-after mutations (see fallback.md).
+`SessionListState.byId[sessionId]` 携带 `{ id, title, displayTitle, cwd,
+updatedAt, blank, ... }`——`blank: true` 标记临时新建会话行（归档/删除计数
+时应排除）。官方 `ISessions` 面上**没有客户端侧 refresh/delete**；
+`ctx.sessions.refresh()` 属 cast/扩展——变更后应重新同步宿主列表
+（见 fallback.md）。
 
-## `ctx.workspaces` — client workspaces face
+## `ctx.workspaces` — 客户端工作区面
 
 ```ts
 readonly list: ObservableSnapshot<WorkspaceListState>
 // { items: WorkspaceView[], archivedSessionIds, phase, ... }
-manager?.refresh?.()   // re-pull workspace baseline (used after mutations)
-archiveSession(sessionId)   // official archive verb
+manager?.refresh?.()   // 重新拉取工作区基线（变更后使用）
+archiveSession(sessionId)   // 官方归档动词
 ```
 
-`WorkspaceView` = `{ workspaceId, path, title?, sessionIds }`.
+`WorkspaceView` = `{ workspaceId, path, title?, sessionIds }`。
 
 ## `ctx.locale`
 
 ```ts
-ctx.locale.register(ns, locale, dict)   // e.g. register('my-plugin', 'zh', DICT_ZH)
+ctx.locale.register(ns, locale, dict)   // 如 register('my-plugin', 'zh', DICT_ZH)
 ctx.locale.subscribe(listener)
 ctx.locale.getLocale().active
 ```
 
-Pattern (from dsh-tauri-session/src/client/locale.ts): module-level
-`activeLocale` + `localeRev` SnapshotStore; `text(key, values?)` renders
-`{placeholder}` templates; `useLocale()` subscribes to rev so components
-re-render on locale change. Keep zh/en key sets identical.
+通用模式：模块级 `activeLocale` + `localeRev` SnapshotStore；`text(key,
+values?)` 渲染 `{placeholder}` 模板；`useLocale()` 订阅 rev 使组件在语言
+切换时重渲染。保持中英文案键集合一致。
 
 ## `ctx.layout`
 
-`ctx.layout.toggleSidebar()` and other chrome verbs (used by dsh-tauri's nav
-bridge). Inject `'layout'` when the plugin needs shell chrome access.
+`ctx.layout.toggleSidebar()` 与其他 chrome 动词。插件需要访问外壳 chrome 时
+注入 `'layout'`。
 
-## Store & state patterns
+## 状态模式
 
 - `createSnapshotStore(initial)` / `useSyncExternalStore(store.subscribe,
-  store.getSnapshot)` — module-level shared state
-  (`dsh-tauri-session/src/client/store.ts`).
-- `defineStore(...)` — engine store instances for slot-scoped state.
-- `useProjection` / `useSession` standard props are auto-injected into
-  session-scoped slot components.
+  store.getSnapshot)` — 模块级共享状态。
+- `defineStore(...)` — slot 作用域状态的引擎 store 实例。
+- `useProjection` / `useSession` 标准 props 自动注入到会话作用域 slot 组件。
 
-## DOM patching rules (when official UI must change)
+## DOM 补丁规则（需要改动官方 UI 时）
 
-The client half may patch official DOM (portal menus, sidebar rows) but must:
+客户端半区可以补丁官方 DOM（portal 菜单、侧边栏行），但必须：
 
-- Use stable selectors: `role=`, `aria-label`, `data-slot`, plugin-prefixed
-  classes — never generated CSS-module hashes.
-- Read React identity via Fiber keys **read-only** when the DOM lacks data
-  attributes (see `workspace-patch.ts` `reactKey`).
-- Use `MutationObserver` + capture listeners; clean up everything in the
-  effect disposer.
-- Never remove/replace React-managed nodes wholesale; edit label text nodes
-  and innerHTML of icon containers instead.
+- 使用稳定选择器：`role=`、`aria-label`、`data-slot`、插件前缀 class——
+  绝不用生成的 CSS-module 哈希。
+- 在 DOM 缺乏 data 属性时，只读地通过 Fiber key 读取 React 身份。
+- 使用 `MutationObserver` + capture 监听；在 effect disposer 中清理一切。
+- 不要整体删除/替换 React 管理的节点；只改标签文本节点与图标容器的
+  innerHTML。

@@ -1,6 +1,6 @@
-# Testing & Verification
+# 测试与验证
 
-Run these before finishing any plugin change (repo rule, from AGENTS.md):
+完成任何插件改动前运行（仓库规则）：
 
 ```bash
 pnpm run lint --fix
@@ -9,33 +9,32 @@ pnpm run test -- --run
 pnpm run build
 ```
 
-## Per-plugin commands
+## 单包命令
 
 ```bash
-pnpm -F dsh-tauri-session typecheck
-pnpm -F dsh-tauri-session test -- --run
-pnpm -F dsh-tauri-session build
+pnpm -F <插件名> typecheck
+pnpm -F <插件名> test -- --run
+pnpm -F <插件名> build
 ```
 
-## Unit tests (Vitest)
+## 单元测试（Vitest）
 
-- `foo.ts` → same-directory `foo.test.ts`.
-- Use `describe` / `it` / `expect`; no always-true placeholder tests.
-- Prefer testing pure functions, state transitions, HTTP method/authorization
-  boundaries, storage atomicity, and public protocols.
+- `foo.ts` → 同目录 `foo.test.ts`。
+- 用 `describe` / `it` / `expect`；禁止恒真占位测试。
+- 优先测试纯函数、状态转换、HTTP 方法/授权边界、存储原子性与公开协议。
 
-### HTTP route tests
+### HTTP 路由测试
 
-Test `routeHandler` directly with fake req/res:
+用假 req/res 直接测 `routeHandler`：
 
-- wrong method → 405
-- non-loopback mutation → 403
-- missing body field → business error → 500 `{ error }`
-- success → `[200, payload]`
+- 错误方法 → 405
+- 非回环变更 → 403
+- 缺 body 字段 → 业务错误 → 500 `{ error }`
+- 成功 → `[200, payload]`
 
-### Registry state machine tests
+### 注册表状态机测试
 
-`dsh-tauri-session/src/index.test.ts` fakes the registry:
+伪造注册表：
 
 ```ts
 interface FakeRegistry {
@@ -45,64 +44,53 @@ interface FakeRegistry {
 }
 ```
 
-Tests assert: single-id removal preserves the rest of the state; no write when
-the update is a no-op; clear empties the set; missing mutation surface rejects
-with a version-compatibility message.
+断言：移除单 id 保留其余状态；无变更时不写入；清空集合；缺变更面时报
+版本兼容错误。
 
-### Pure function tests
+### 纯函数测试
 
-`dsh-tauri-session/src/client/archive-sort.test.ts` covers grouping/sorting
-with row fixtures. `dsh-tauri-worktree` tests git/ledger/storage transitions.
+分组/排序用行 fixture；Git/ledger/存储转换做状态断言。
 
-## Shell patch tests (deepseek-harness-desktop)
+## 壳补丁测试（Rust）
 
-Rust unit tests inside each `*_patch.rs`:
+每个 `*_patch.rs` 内的单元测试：
 
-- `patches_<feature>` — patching a fixture containing the anchor produces the
-  marker + injected code.
-- `patch_is_idempotent` — patching an already-patched source returns
-  `AlreadyPatched`.
-- `skips_partial_upstream_layout` — anchor missing → `AnchorMissing` (no
-  corruption).
+- `patches_<功能>` — 打补丁含锚点的 fixture 后产生 marker + 注入代码。
+- `patch_is_idempotent` — 打已补丁源码返回 `AlreadyPatched`。
+- `skips_partial_upstream_layout` — 锚点缺失 → `AnchorMissing`（不破坏）。
 
-Run:
+运行：
 
 ```bash
 cd src-tauri
-cargo test service::workflow::session_patch
+cargo test service::workflow::<patch模块>
 cargo check
 ```
 
-## Manual end-to-end verification
+## 手动端到端验证
 
-1. Rebuild the plugin: `pnpm -F <name> build`.
-2. **Restart the desktop shell** — page refresh alone does not reload the host
-   half or apply launch-time shell patches.
-3. Verify the exact HTTP requests in DevTools Network: pathname, method, port,
-   status. 404 usually means stale dist or wrong path; 405 is method mismatch;
-   403 is origin.
-4. For destructive operations, check both durable state and live memory:
-   - durable: `$DSH_HOME/sessions/...` directories,
-     `$DSH_HOME/storages/workspace.json` (`archivedSessionIds`,
-     `tables.workspaces[*].sessionIds`)
-   - live: does the session vanish from the UI immediately, or only after
-     restart? (The latter indicates the in-memory SessionStore still holds it
-     — see fallback.md.)
+1. 重建插件：`pnpm -F <插件名> build`。
+2. **重启桌面壳**——仅刷新页面不会重载宿主半区或应用启动期壳补丁。
+3. 在 DevTools Network 中核实确切 HTTP 请求：路径名、方法、端口、状态。
+   404 通常是 dist 过期或路径错误；405 是方法不匹配；403 是来源。
+4. 破坏性操作同时检查持久状态与活跃内存：
+   - 持久：`$DSH_HOME/sessions/...` 目录、`$DSH_HOME/storages/workspace.json`
+     （`archivedSessionIds`、`tables.workspaces[*].sessionIds`）
+   - 活跃：会话是否立即从 UI 消失，还是仅重启后？（后者说明内存
+     SessionStore 仍持有它——见 fallback.md。）
 
-## Data layout quick reference (JSONL backend)
+## 数据布局速查（JSONL 后端）
 
 ```text
-$DSH_HOME/sessions/<encoded-cwd-key>/<encoded-session-id>/session.jsonl.zstd
-$DSH_HOME/storages/workspace.json        # workspace records + archive set
+$DSH_HOME/sessions/<编码后-cwd-键>/<编码后-session-id>/session.jsonl.zstd
+$DSH_HOME/storages/workspace.json        # 工作区记录 + 归档集合
 $DSH_HOME/storages/session_projcache.json
 ```
 
-`encodeSessionId` escapes unsafe code units as `~XXXX`; the cwd key is a
-lossy `--<slug>--` encoding. Copy the encoder from
-`dsh-tauri-session/src/index.ts` when scanning durable directories.
+`encodeSessionId` 把不安全码元转义为 `~XXXX`；cwd 键是易读的 `--<slug>--`
+编码。扫描持久目录时复制官方的编码逻辑。
 
-## Dev environment facts (this machine)
+## 开发环境事实
 
-- `DSH_HOME=C:\Users\hairy\.dsh` (release), debug builds use `.dsh.dev`.
-- Dev sessions live under `C:\Users\hairy\.dsh\sessions\<encoded-cwd>\session-<id>\`.
-- Workspace/archive state: `C:\Users\hairy\.dsh\storages\workspace.json`.
+- debug 构建使用独立 `$DSH_HOME`（如 `.dsh.dev`），与 release 数据隔离。
+- 会话/工作区状态位于 `$DSH_HOME/sessions/` 与 `$DSH_HOME/storages/`。

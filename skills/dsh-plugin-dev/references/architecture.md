@@ -1,95 +1,66 @@
-# Host / Client Architecture
+# 宿主 / 客户端架构
 
-DeepSeek Harness plugins are Cordis plugins with two independently loaded
-halves that share one package. The loader mounts each half in its own runtime:
-the **host half** runs in the node process, the **client half** runs in the
-browser (WebView).
+DeepSeek Harness 插件是 **Cordis 插件**，一个插件包包含两个独立加载的半区。加载器将每个半区挂载到各自的运行时：**宿主半区**运行在 node 进程，**客户端半区**运行在浏览器（WebView）。
 
-## Two-half model
+## 双半区模型
 
 ```
-┌─────────────────────────────┐      fetch /api/<plugin>/*      ┌─────────────────────────────┐
-│  Host half (node)           │ ◄──────────────────────────────► │  Client half (browser)     │
-│  packages/<name>/src/*.ts   │                                 │  packages/<name>/src/client │
+┌─────────────────────────────┐      fetch /api/<插件>/*      ┌─────────────────────────────┐
+│  宿主半区（node）           │ ◄──────────────────────────────► │  客户端半区（浏览器）        │
+│  packages/<名称>/src/*.ts   │                                 │  packages/<名称>/src/client │
 │  ctx.webServer / sessions   │                                 │  ctx.slots / locale /      │
 │  workspaceRegistry / tools  │                                 │  sessions / workspaces     │
 │  systemPrompt / agents ...  │                                 │  layout / renderer ...     │
 └─────────────────────────────┘                                 └─────────────────────────────┘
 ```
 
-- **Host half** (`src/index.ts`) owns all I/O: git, filesystem, processes,
-  HTTP routes, tool registration, system prompt injection, agent lifecycle.
-- **Client half** (`src/client/index.ts`) renders UI into slots, patches the
-  DOM, manages locale and local store state, and calls host routes via
-  `fetch('/api/<plugin>/...')` (same-origin, absolute path).
-- A plugin may be **host-only** (no client dir) or **client-only**
-  (e.g. `dsh-tauri-panel` exports an empty host `apply`), but the loader still
-  expects a mountable entry per half that ships.
+- **宿主半区**（`src/index.ts`）拥有所有 I/O：Git、文件系统、进程、HTTP 路由、工具注册、系统提示词注入、Agent 生命周期。
+- **客户端半区**（`src/client/index.ts`）向 slot 渲染 UI、补丁 DOM、管理多语文案与本地状态，并通过 `fetch('/api/<插件>/...')`（同源绝对路径）调用宿主路由。
+- 插件可以是**仅宿主**（无 client 目录）或**仅客户端**（宿主侧导出空 `apply`），但加载器对每个发布的半区都期望存在可挂载入口。
 
-## Lifecycle
+## 生命周期
 
-Each half is a Cordis plugin:
+每个半区都是一个 Cordis 插件：
 
 ```ts
-export const name = 'my-plugin'                      // diagnostics identity
-export const inject = ['webServer', 'sessions']      // required services
-export function apply(ctx, config?) { ... }          // called once services ready
+export const name = 'my-plugin'                      // 诊断标识
+export const inject = ['webServer', 'sessions']      // 必需服务
+export function apply(ctx, config?) { ... }          // 服务就绪后调用
 ```
 
-- `inject` declares services; the plugin starts **only after** every listed
-  service is ready. Loading order is expressed through dependencies, never
-  manual sequencing.
-- `apply(ctx, config)` is the assembly entry point. Register everything inside
-  `ctx.effect(() => disposer, effectId)` so reload/HMR/teardown unwinds
-  correctly.
-- `ctx.effect` return value is a disposer (or iterable of disposers). The
-  effect id is diagnostic only. On fiber unload, disposers run in reverse
-  registration order.
-- Client HMR: the official dsh client-HMR path may unload third-party plugins
-  without remounting them; the desktop shell patches this for debug builds
-  (`client_hmr_patch.rs` downgrades rebuilt to a page reload).
+- `inject` 声明服务；插件**仅在所有列出的服务就绪后**启动。加载顺序通过依赖表达，绝不用手动排序。
+- `apply(ctx, config)` 是组装入口。所有注册都放在 `ctx.effect(() => disposer, effectId)` 内，使 reload/HMR/teardown 正确回滚。
+- `ctx.effect` 的返回值是 disposer（或 disposer 的可迭代集合）。fiber 卸载时按注册逆序执行。
+- 客户端 HMR：官方 dsh 客户端 HMR 可能卸载第三方插件而不重新挂载；桌面壳对 debug 构建打了补丁（把 rebuilt 降级为页面刷新）。
 
-## Host apply order (from existing plugins)
+## 宿主 apply 顺序（通用实践）
 
-1. Register tools (`ctx.tools.register(tool)`) and system prompt
-   sections/contexts (`ctx.systemPrompt.section/context`).
-2. Subscribe to events (`ctx.on('session/event', ...)`) for cross-cutting
-   behaviors.
-3. `ctx.effect(() => migrate legacy data, '...')` for one-time migrations.
-4. `ctx.effect(() => buildRoutes(ctx).map(r => ctx.webServer.register(r)), '...')`
-   — collect disposers so unload removes every route.
+1. 注册工具（`ctx.tools.register(tool)`）与系统提示词段落/上下文（`ctx.systemPrompt.section/context`）。
+2. 订阅事件（`ctx.on('session/event', ...)`）做横切行为。
+3. `ctx.effect(() => 迁移旧数据, '...')` 做一次性迁移。
+4. `ctx.effect(() => buildRoutes(ctx).map(r => ctx.webServer.register(r)), '...')` —— 收集 disposer，卸载时移除每条路由。
 
-## Client apply order (per AGENTS.md)
+## 客户端 apply 顺序
 
-1. Install locale (`installLocale(ctx)` — `ctx.locale.register(ns, 'zh', dict)`).
-2. Mount css-render styles inside `ctx.effect`.
-3. Register slot components and UI behaviors (`ctx.slots.register(...)`).
-4. Manage MutationObservers, listeners, timers, hydration via `ctx.effect`.
+1. 安装文案（`installLocale(ctx)` —— `ctx.locale.register(ns, 'zh', dict)`）。
+2. 在 `ctx.effect` 中挂载 css-render 样式。
+3. 注册 slot 组件与 UI 行为（`ctx.slots.register(...)`）。
+4. 通过 `ctx.effect` 管理 MutationObserver、监听器、定时器、hydration。
 
-## Communication contract
+## 通信契约
 
-- Routes live under `/api/<plugin>/*` (e.g. `/api/dsh-session/archived`).
-- `routeHandler(fn, { mutate })`: `mutate: true` → `POST` + loopback origin
-  guard; `false` → `GET`. Errors become `500` with `{ error }` JSON, 405 for
-  wrong method, 403 for non-loopback mutations.
-- Client `request<T>(path, init)` helper wraps fetch with JSON parsing and
-  non-OK → `Error(body.error ?? 请求失败 (status))`; add an AbortController
-  timeout for mutating calls so a stalled host never hangs the UI forever.
+- 路由位于 `/api/<插件>/*`（如 `/api/<插件>/archived`）。
+- `routeHandler(fn, { mutate })`：`mutate: true` → `POST` + 回环来源校验；`false` → `GET`。错误转 `500` 返回 `{ error }` JSON，方法错误 405，非回环变更 403。
+- 客户端 `request<T>(path, init)` 助手封装 fetch：JSON 解析、非 2xx → `Error(body.error ?? 请求失败 (status))`；变更调用加上 AbortController 超时，避免宿主卡死导致 UI 永久等待。
 
-## Host context typing
+## 宿主上下文类型
 
-`HostContext = any` is the accepted seam type in `src/types.ts` (see
-`dsh-tauri-session/src/types.ts`). Feature code should narrow the services it
-touches with small structural interfaces (e.g. `SessionStoreSurface`) instead
-of spreading `any` through the codebase.
+`HostContext = any` 是 `src/types.ts` 中认可的接缝类型。功能代码应通过小型结构化接口（如 `SessionStoreSurface`）收窄其访问的服务，而不是把 `any` 扩散到整个代码库。
 
-## Reference plugins in this repo
+## 数据目录速查（JSONL 后端）
 
-| Plugin | Half focus | Notable techniques |
-|--------|-----------|--------------------|
-| `dsh-tauri` | client | pure message bridge, `ctx.layout.toggleSidebar`, css-render tweaks |
-| `dsh-tauri-ui` | client | settings dialog → sidebar, slot-shadow, `SlotOutlet`, graceful fallback |
-| `dsh-tauri-panel` | none | empty host apply pattern |
-| `dsh-tauri-panel-extension` | host | `ctx.inject(['webServer','skills'], cb)`, skills provider remount |
-| `dsh-tauri-session` | both | archive page, DOM workspace-menu patch, route RPCs, shell-patch API |
-| `dsh-tauri-worktree` | both | tools + systemPrompt + agents + webServer, ledger persistence |
+- 持久会话：`$DSH_HOME/sessions/<编码后-cwd-键>/<编码后-session-id>/session.jsonl.zstd`
+- 工作区与归档状态：`$DSH_HOME/storages/workspace.json`
+- 会话投影缓存：`$DSH_HOME/storages/session_projcache.json`
+
+会话 id 编码把不安全码元转义为 `~XXXX`；cwd 键是易读的 `--<slug>--` 编码。扫描持久目录时复制官方的编码逻辑。
