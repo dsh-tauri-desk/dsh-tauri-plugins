@@ -1,4 +1,4 @@
-/** Client-side shared types for dsh-tauri-rightclick-menu. */
+/** Client-side shared types for dsh-tauri-rightclick. */
 
 /** 会话列表摘要（最小 `ctx.sessions.list` 快照面）。 */
 export interface SessionSummaryLike {
@@ -85,19 +85,10 @@ export interface ContextMenuEventDetail {
   extensions: ContextMenuExtension[]
 }
 
-/** 危险操作确认框文案。 */
-export interface ConfirmDialogOptions {
-  title: string
-  message: string
-  confirmLabel: string
-  cancelLabel: string
-}
-
 /** 本插件文案键（zh 字典键集合为权威）。 */
 export type LocaleKey
   = | 'renameSession'
     | 'archiveSession'
-    | 'deleteSession'
     | 'openInExplorer'
     | 'copyWorkingDirectory'
     | 'copySessionId'
@@ -129,6 +120,7 @@ export type LocaleKey
     | 'linkCopied'
     | 'noWorkspaceSessions'
     | 'archiveWorkspaceConfirm'
+    | 'archiveUngroupedConfirm'
     | 'workspaceSessionsArchived'
     | 'removeWorkspaceConfirm'
     | 'officialSessionActionUnavailable'
@@ -149,13 +141,3 @@ export type LocaleKey
     | 'sessionServiceUnavailable'
     | 'renameFailed'
     | 'editPositionUnknown'
-    | 'deleteSessionDialogTitle'
-    | 'deleteSessionConfirm'
-    | 'confirmDelete'
-    | 'cancel'
-    | 'sessionDeleted'
-    | 'sessionRunning'
-    | 'subagentSession'
-    | 'sessionNotFound'
-    | 'sessionFilesNotFound'
-    | 'deleteFailed'

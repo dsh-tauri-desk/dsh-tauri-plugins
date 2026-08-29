@@ -8,8 +8,8 @@ import type {
   WorkspacesRuntimeLike,
   WorkspaceViewLike,
 } from './types'
-import { DELETE_SESSION_ROUTE, HOST_OPEN_PATH_ENDPOINT, OPEN_URL_ROUTE } from './constants'
-import { confirmDialog, toast } from './dialog'
+import { HOST_OPEN_PATH_ENDPOINT, OPEN_URL_ROUTE } from './constants'
+import { toast } from './dialog'
 import { text } from './locale'
 import { externalUrl, officialAction } from './locate'
 
@@ -141,27 +141,26 @@ export async function forkSession(
   sessions.open(childId)
 }
 
-/** 永久删除会话：插件确认框（非官方确认），确认后走宿主删除路由。 */
-export async function deleteSession(session: SessionSummaryLike | null): Promise<void> {
-  if (!session)
-    throw new Error(text('sessionUnknown'))
-  const title = session.displayTitle || session.title || session.id
-  const confirmed = await confirmDialog({
-    title: text('deleteSessionDialogTitle'),
-    message: text('deleteSessionConfirm', { title }),
-    confirmLabel: text('confirmDelete'),
-    cancelLabel: text('cancel'),
+/** 归档整个工作区（跳过已归档的会话，确认后逐个归档）。 */
+export async function archiveUngroupedSessions(workspaces: WorkspacesRuntimeLike, sessions: SessionsRuntimeLike): Promise<void> {
+  const snapshot = workspaces.list.getSnapshot()
+  const archived = new Set(snapshot.archivedSessionIds)
+  const assigned = new Set(snapshot.items.flatMap(workspace => workspace.sessionIds))
+  const sessionSnapshot = sessions.list.getSnapshot()
+  const sessionIds = sessionSnapshot.ids.filter((id) => {
+    const session = sessionSnapshot.byId[id]
+    return !assigned.has(id) && !archived.has(id) && session?.blank !== true
   })
-  if (!confirmed)
+  if (!sessionIds.length) {
+    toast(text('noWorkspaceSessions'))
     return
-  try {
-    await fetch(DELETE_SESSION_ROUTE, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ sessionId: session.id }),
-    })
   }
-  catch {}
+  // eslint-disable-next-line no-alert
+  if (!globalThis.confirm(text('archiveUngroupedConfirm', { count: sessionIds.length })))
+    return
+  for (const id of sessionIds)
+    await workspaces.archiveSession(id)
+  toast(text('workspaceSessionsArchived', { count: sessionIds.length }))
 }
 
 /** 归档整个工作区（跳过已归档的会话，确认后逐个归档）。 */

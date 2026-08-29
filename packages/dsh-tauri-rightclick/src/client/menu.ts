@@ -3,7 +3,7 @@
  * 链接 / 对话内容区）组装菜单项，处理键盘导航与外部点击关闭。
  *
  * 会话与工作区的官方操作全部转交官方组件（officialSelect）；插件只补充
- * 宿主能力（永久删除、资源管理器、剪贴板、默认浏览器、刷新）。
+ * 宿主能力（资源管理器、剪贴板、默认浏览器、刷新）。
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
@@ -12,8 +12,8 @@ import type {
 } from './types'
 import {
   archiveSession,
+  archiveUngroupedSessions,
   archiveWorkspaceSessions,
-  deleteSession,
   forkSession,
   openExternalUrl,
   openInExplorer,
@@ -28,7 +28,7 @@ import {
 } from './constants'
 import { toast } from './dialog'
 import { text } from './locale'
-import { editableFrom, externalUrl, isWorkspaceAction, officialAction, resolveSession, rowFrom, selectedText, selectedUrl, workspaceForSession, workspaceFrom } from './locate'
+import { editableFrom, externalUrl, isWorkspaceAction, officialAction, resolveSession, rowFrom, selectedText, selectedUrl, ungroupedRowFrom, workspaceForSession, workspaceFrom } from './locate'
 import { holdRegistryLease, registry } from './registry'
 
 /** 官方工作区菜单项选择（工作区操作按钮无 hover 兜底）。 */
@@ -174,16 +174,20 @@ export function installContextMenu(ctx: ClientContext): () => void {
     if (event.defaultPrevented)
       return
     const row = rowFrom(event.target)
+    const ungroupedRow = !row ? ungroupedRowFrom(event.target, workspaces) : null
     const domSessionWorkspace = row ? workspaceFrom(event.target, workspaces) : null
     const session = row ? resolveSession(sessions, row, domSessionWorkspace?.workspace ?? null) : null
+    // The visible blank “New Session” is only a provisional composer target.
+    if (session?.blank === true)
+      return
     const resolvedWorkspace = domSessionWorkspace?.workspace || workspaceForSession(workspaces, session)
     const sessionWorkspace = resolvedWorkspace ? { workspace: resolvedWorkspace } : null
-    const workspaceTarget = !row ? workspaceFrom(event.target, workspaces) : null
+    const workspaceTarget = !row && !ungroupedRow ? workspaceFrom(event.target, workspaces) : null
     const editable = editableFrom(event.target)
     const selection = selectedText(editable).trim()
     const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null
     const surface = selectionSurface(event.target)
-    if (!row && !workspaceTarget && !editable && !selection && !link && !surface)
+    if (!row && !ungroupedRow && !workspaceTarget && !editable && !selection && !link && !surface)
       return
     event.preventDefault()
     event.stopPropagation()
@@ -212,7 +216,6 @@ export function installContextMenu(ctx: ClientContext): () => void {
     if (row) {
       add(root, text('renameSession'), () => renameSession(sessions, row, session))
       add(root, text('archiveSession'), () => archiveSession(workspaces, row, session))
-      add(root, text('deleteSession'), () => deleteSession(session), '', true)
       const cwd = session?.cwd || sessionWorkspace?.workspace.path
       if (cwd) {
         split(root)
@@ -233,6 +236,11 @@ export function installContextMenu(ctx: ClientContext): () => void {
         for (const entry of extensions)
           add(root, entry.label || entry.id, () => entry.run({ session, row, sessions, workspaces, close }))
       }
+      split(root)
+      add(root, text('refresh'), () => globalThis.location.reload(), 'Ctrl+R')
+    }
+    else if (ungroupedRow) {
+      add(root, text('archiveWorkspaceSessions'), () => archiveUngroupedSessions(workspaces, sessions))
       split(root)
       add(root, text('refresh'), () => globalThis.location.reload(), 'Ctrl+R')
     }
@@ -336,7 +344,6 @@ export function installContextMenu(ctx: ClientContext): () => void {
       return
     disposed = true
     close()
-    document.querySelector<HTMLElement>(`.${K.dialogBackdrop} [data-cancel]`)?.click()
     document.removeEventListener('contextmenu', onContextMenu, true)
     document.removeEventListener('pointerdown', outside, true)
     document.removeEventListener('keydown', keyboard, true)

@@ -34,6 +34,17 @@ export function rowFrom(target: unknown): Element | null {
   return [...row.querySelectorAll('button[aria-label]')].some(isAction) ? row : null
 }
 
+/** Locate the official Ungrouped group header, which intentionally has no menu button. */
+export function ungroupedRowFrom(target: unknown, workspaces: WorkspacesRuntimeLike): Element | null {
+  const row = target instanceof Element ? target.closest('[role="treeitem"][aria-expanded]') : null
+  if (!row)
+    return null
+  const label = row.querySelector('span span')?.textContent?.trim() || row.textContent?.trim() || ''
+  if (!/^(?:未分组|Ungrouped)$/i.test(label))
+    return null
+  return workspaces.list.getSnapshot().items.some(workspace => workspace.title === label) ? null : row
+}
+
 /** 行是否命中某个工作区（按 aria-label/title/纯文本三路匹配，要求唯一命中）。 */
 function treeItemWorkspace(row: Element, items: readonly WorkspaceViewLike[]): WorkspaceViewLike | null {
   if (!row)

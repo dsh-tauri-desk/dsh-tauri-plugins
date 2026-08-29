@@ -226,7 +226,7 @@ importers:
 
   packages/dsh-tauri-panel-placeholder: {}
 
-  packages/dsh-tauri-rightclick-menu: {}
+  packages/dsh-tauri-rightclick: {}
 
   packages/dsh-tauri-session: {}
 

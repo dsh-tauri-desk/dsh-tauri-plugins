@@ -67,69 +67,6 @@ const rightClickStyle = c([
     font: '13px/18px system-ui, sans-serif',
     boxShadow: '0 6px 20px #0003',
   }),
-  c(`.${K.dialogBackdrop}`, {
-    position: 'fixed',
-    zIndex: 2147483647,
-    inset: '0',
-    display: 'grid',
-    placeItems: 'center',
-    padding: '20px',
-    background: '#0006',
-  }),
-  c(`.${K.dialog}`, {
-    boxSizing: 'border-box',
-    width: 'min(420px, 100%)',
-    padding: '20px',
-    background: 'var(--dsw-alias-bg-layer-2, #fff)',
-    color: 'var(--dsw-alias-label-primary, #161616)',
-    border: '1px solid var(--dsw-alias-border-l2, #ddd)',
-    borderRadius: '12px',
-    boxShadow: '0 18px 50px #0005',
-    font: '14px/21px system-ui, sans-serif',
-  }),
-  c(`.${K.dialogTitle}`, {
-    margin: '0 0 10px',
-    fontSize: '17px',
-    lineHeight: '24px',
-    fontWeight: 650,
-  }),
-  c(`.${K.dialogMessage}`, {
-    margin: '0',
-    whiteSpace: 'pre-line',
-    color: 'var(--dsw-alias-label-secondary, #555)',
-  }),
-  c(`.${K.dialogActions}`, {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    gap: '8px',
-    marginTop: '22px',
-  }),
-  c(`.${K.dialogButton}`, {
-    minWidth: '72px',
-    height: '34px',
-    padding: '0 14px',
-    border: '1px solid var(--dsw-alias-border-l2, #ccc)',
-    borderRadius: '7px',
-    background: 'var(--dsw-alias-bg-layer-1, #fff)',
-    color: 'inherit',
-    cursor: 'pointer',
-    font: 'inherit',
-  }, [
-    c('&:hover, &:focus-visible', {
-      background: 'var(--dsw-alias-interactive-bg-hover, #0000000f)',
-      outline: '2px solid var(--dsw-alias-state-focus, #6b9eff)',
-      outlineOffset: '1px',
-    }),
-  ]),
-  c(`.${K.dialogConfirm}`, {
-    borderColor: 'transparent',
-    background: 'var(--dsw-alias-state-error-primary, #d93025)',
-    color: '#fff',
-  }, [
-    c('&:hover, &:focus-visible', {
-      background: 'var(--dsw-alias-state-error-primary, #c5221f)',
-    }),
-  ]),
 ])
 
 /** 挂载右键菜单样式；若已由其他生命周期挂载则不取得所有权。 */

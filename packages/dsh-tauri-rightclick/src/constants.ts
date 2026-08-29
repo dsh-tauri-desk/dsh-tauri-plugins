@@ -1,9 +1,7 @@
-/** Host-half protocol constants for dsh-tauri-rightclick-menu. */
+/** Host-half protocol constants for dsh-tauri-rightclick. */
 
-export const RIGHTCLICK_PLUGIN_NAME = 'dsh-tauri-rightclick-menu'
+export const RIGHTCLICK_PLUGIN_NAME = 'dsh-tauri-rightclick'
 export const RIGHTCLICK_API_PREFIX = '/api/dsh-rightclick-menu'
-/** 永久删除会话（POST，同源 JSON）。 */
-export const DELETE_SESSION_ROUTE = `${RIGHTCLICK_API_PREFIX}/delete`
 /** 用系统默认浏览器打开外链（POST，同源 JSON）。 */
 export const OPEN_URL_ROUTE = `${RIGHTCLICK_API_PREFIX}/open-url`
 

@@ -13,7 +13,6 @@ export { RIGHTCLICK_CLIENT_NS as NS } from './constants'
 const DICT_ZH = {
   renameSession: '重命名会话',
   archiveSession: '归档会话',
-  deleteSession: '删除会话',
   openInExplorer: '在资源管理器中打开',
   copyWorkingDirectory: '复制工作目录',
   copySessionId: '复制会话 ID',
@@ -65,23 +64,13 @@ const DICT_ZH = {
   sessionServiceUnavailable: '无法取得官方会话服务',
   renameFailed: '重命名失败',
   editPositionUnknown: '无法确定编辑位置',
-  deleteSessionDialogTitle: '永久删除会话？',
-  deleteSessionConfirm: '会话“{title}”的记录及其硬盘文件将被删除。\n\n此操作不可恢复。',
-  confirmDelete: '确定删除',
-  cancel: '取消',
-  sessionDeleted: '会话已永久删除',
-  sessionRunning: '会话仍在运行，无法删除',
-  subagentSession: '子代理会话不能直接删除',
-  sessionNotFound: '找不到该会话',
-  sessionFilesNotFound: '找不到该会话的本地文件',
-  deleteFailed: '删除会话失败',
+  archiveUngroupedConfirm: '归档未分组中的 {count} 个会话？',
 } as const satisfies Record<LocaleKey, string>
 
 /** en 字典，与 zh 键集完全一致（locale 运行时强制双语平衡）。 */
 const DICT_EN: Record<LocaleKey, string> = {
   renameSession: 'Rename session',
   archiveSession: 'Archive session',
-  deleteSession: 'Delete session',
   openInExplorer: 'Open in File Explorer',
   copyWorkingDirectory: 'Copy working directory',
   copySessionId: 'Copy session ID',
@@ -133,16 +122,7 @@ const DICT_EN: Record<LocaleKey, string> = {
   sessionServiceUnavailable: 'Official session service is unavailable',
   renameFailed: 'Rename failed',
   editPositionUnknown: 'Could not determine the editing position',
-  deleteSessionDialogTitle: 'Permanently delete session?',
-  deleteSessionConfirm: 'The record and files on disk for session “{title}” will be deleted.\n\nThis cannot be undone.',
-  confirmDelete: 'Delete',
-  cancel: 'Cancel',
-  sessionDeleted: 'Session permanently deleted',
-  sessionRunning: 'The session is still running and cannot be deleted',
-  subagentSession: 'Subagent sessions cannot be deleted directly',
-  sessionNotFound: 'Session not found',
-  sessionFilesNotFound: 'The session\'s local files could not be found',
-  deleteFailed: 'Failed to delete session',
+  archiveUngroupedConfirm: 'Archive {count} sessions in Ungrouped?',
 }
 
 /** 活跃语言 id（module 级缓存，apply 时初始化并由订阅推进）。 */
