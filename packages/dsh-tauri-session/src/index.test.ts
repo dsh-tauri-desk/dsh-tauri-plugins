@@ -1,3 +1,4 @@
+import { resolve, sep } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { encodeSessionId, isWithinSessionsRoot, updateRegistryArchiveSet } from './index'
 
@@ -76,17 +77,17 @@ describe('updateRegistryArchiveSet', () => {
 })
 
 describe('isWithinSessionsRoot', () => {
-  const root = 'C:\\Users\\hairy\\.dsh\\sessions'
+  const root = resolve('dsh-home', 'sessions')
 
   it('accepts direct and nested session directories below the root', () => {
-    expect(isWithinSessionsRoot(root, `${root}\\session-abc`)).toBe(true)
-    expect(isWithinSessionsRoot(root, `${root}\\--group--\\session-abc`)).toBe(true)
+    expect(isWithinSessionsRoot(root, `${root}${sep}session-abc`)).toBe(true)
+    expect(isWithinSessionsRoot(root, `${root}${sep}--group--${sep}session-abc`)).toBe(true)
   })
 
   it('rejects traversal and absolute escapes', () => {
-    expect(isWithinSessionsRoot(root, `${root}\\..`)).toBe(false)
-    expect(isWithinSessionsRoot(root, 'C:\\Users\\hairy\\.dsh')).toBe(false)
-    expect(isWithinSessionsRoot(root, 'C:\\Windows')).toBe(false)
+    expect(isWithinSessionsRoot(root, `${root}${sep}..`)).toBe(false)
+    expect(isWithinSessionsRoot(root, resolve('dsh-home'))).toBe(false)
+    expect(isWithinSessionsRoot(root, resolve('..'))).toBe(false)
   })
 })
 
