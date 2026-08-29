@@ -90,6 +90,14 @@ export function postClear(): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>('/clear', { method: 'POST', body: JSON.stringify({}) })
 }
 
+/** 删除项目内的全部归档会话。 */
+export function postDeleteWorkspace(sessionIds: readonly string[]): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>('/delete-workspace', {
+    method: 'POST',
+    body: JSON.stringify({ sessionIds }),
+  })
+}
+
 /** 全局唯一共享状态源（模块级单例）。 */
 export const archiveStore = createSnapshotStore<ArchiveUiState>({
   archived: { archivedSessionIds: [], meta: {} },
@@ -212,4 +220,9 @@ export function deleteSession(sessionId: string, resync?: () => Promise<void>): 
 export function clearArchive(resync?: () => Promise<void>): Promise<boolean> {
   const sessionIds = [...archiveStore.getSnapshot().archived.archivedSessionIds]
   return runMutation(() => postClear(), resync, sessionIds)
+}
+
+/** 彻底删除项目内归档会话并刷新。返回是否成功。 */
+export function deleteWorkspaceSessions(sessionIds: readonly string[], resync?: () => Promise<void>): Promise<boolean> {
+  return runMutation(() => postDeleteWorkspace(sessionIds), resync, sessionIds)
 }

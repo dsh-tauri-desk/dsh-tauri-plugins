@@ -32,6 +32,8 @@ export const SESSION_CLASSES = {
   groupHeader: 'dsh-tauri-session-group-header',
   groupTitle: 'dsh-tauri-session-group-title',
   groupCount: 'dsh-tauri-session-group-count',
+  groupMenu: 'dsh-tauri-session-group-menu',
+  groupMenuTrigger: 'dsh-tauri-session-group-menu-trigger',
   list: 'dsh-tauri-session-list',
   row: 'dsh-tauri-session-row',
   rowMain: 'dsh-tauri-session-row-main',

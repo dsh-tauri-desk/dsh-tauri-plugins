@@ -47,10 +47,15 @@ const archiveStyle = c([
   ]),
 
   c(`.${K.toolbar}`, {
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     flexWrap: 'wrap',
+    padding: '8px 0',
+    background: 'var(--dsw-alias-bg-base, var(--dsw-alias-bg-module-platform))',
   }),
   // 官方 Input 自带外观（32px 圆角框、focus 描边），这里只控制弹性宽度。
   c(`.${K.search}`, {
@@ -117,7 +122,25 @@ const archiveStyle = c([
     fontSize: '13px',
     lineHeight: '20px',
     color: 'var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary))',
+    marginLeft: 'auto',
   }),
+  c(`.${K.groupMenuTrigger}`, {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '20px',
+    height: '20px',
+    padding: 0,
+    border: 'none',
+    borderRadius: '6px',
+    background: 'transparent',
+    color: 'var(--dsw-alias-label-secondary)',
+    cursor: 'pointer',
+    fontSize: '18px',
+    lineHeight: '1',
+  }, [
+    c('&:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' }),
+  ]),
   // 重置 ul 默认 margin/padding/标记，行内边距由 .row 自行控制，去掉左侧缩进空白。
   c(`.${K.list}`, {
     display: 'flex',

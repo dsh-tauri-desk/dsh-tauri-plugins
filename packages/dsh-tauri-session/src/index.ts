@@ -317,6 +317,27 @@ async function permanentlyDeleteSession(ctx: HostContext, dshHome: string, body:
   return { ok: true as const }
 }
 
+/** 彻底删除指定归档会话（先物理删除全部，再批量更新记账）。 */
+async function permanentlyDeleteSelected(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
+  const rawIds = body.sessionIds
+  if (!Array.isArray(rawIds) || rawIds.length === 0)
+    throw new Error('缺少 sessionIds')
+  const ids = [...new Set(rawIds.map(String).filter(Boolean))]
+  for (const sessionId of ids)
+    requireArchivedMember(ctx, sessionId)
+  const { sessions } = requireDeletionSurfaces(ctx, ids)
+  let removed = 0
+  for (const sessionId of ids) {
+    if (removeSessionDataDir(dshHome, sessionId))
+      removed += 1
+  }
+  removeLiveSessions(sessions, ids)
+  await removeSessionFromWorkspaceAccounting(ctx, ids)
+  await updateRegistryArchiveSet(ctx, current => current.filter(id => !ids.includes(id)))
+  ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] permanently deleted ${ids.length} selected archived session(s) (data removed: ${removed})`)
+  return { ok: true as const }
+}
+
 /** 彻底删除全部已归档会话（先物理删除全部，再批量更新记账）。 */
 async function permanentlyDeleteAll(ctx: HostContext, dshHome: string): Promise<{ ok: true }> {
   const registry = ctx.workspaceRegistry as { archivedSessionIds?: readonly string[] } | undefined
@@ -411,6 +432,11 @@ export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
       kind: 'exact',
       path: `${API_PREFIX}/delete`,
       handler: routeHandler(async body => [200, await permanentlyDeleteSession(ctx, dshHome, body)], { mutate: true }),
+    },
+    {
+      kind: 'exact',
+      path: `${API_PREFIX}/delete-workspace`,
+      handler: routeHandler(async body => [200, await permanentlyDeleteSelected(ctx, dshHome, body)], { mutate: true }),
     },
     {
       kind: 'exact',

@@ -1,3 +1,4 @@
+import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 /**
  * archive-page.tsx — 设置页「归档」分区内容（已归档的聊天）。
  *
@@ -16,10 +17,10 @@
  */
 import type { ReactElement } from 'react'
 import type { ArchivePanelProps, ArchiveRow, ArchiveSort, WorkspaceViewLike } from './types'
-import { Button, Input, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, Menu, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { SESSION_CLASSES as K } from './constants'
-import { IconFolderOpen, IconMagnifier, IconTrashBin } from './icons'
+import { IconEllipsis, IconFolderOpen, IconMagnifier, IconTrashBin } from './icons'
 import { isEnglishLocale, text, useLocale } from './locale'
 import { MenuSelect } from './select'
 import { groupArchive } from './sort'
@@ -27,6 +28,7 @@ import {
   archiveStore,
   clearArchive,
   deleteSession,
+  deleteWorkspaceSessions,
   refreshArchived,
   setQuery,
   setSort,
@@ -36,7 +38,7 @@ import {
 } from './store'
 
 /** 打开的删除确认弹窗：null 关闭；'single' 删除单个会话；'all' 删除全部。 */
-type DeleteConfirm = null | { kind: 'single', sessionId: string } | { kind: 'all' }
+type DeleteConfirm = null | { kind: 'single', sessionId: string } | { kind: 'all' } | { kind: 'workspace', workspaceTitle: string, sessionIds: string[] }
 
 function workspaceTitleOf(path: string): string {
   const parts = path.replace(/[\\/]+$/, '').split(/[\\/]/)
@@ -103,6 +105,7 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
   const ui = useArchiveUi()
   useLocale()
   const [confirm, setConfirm] = useState<DeleteConfirm>(null)
+  const [openGroupMenu, setOpenGroupMenu] = useState<string | null>(null)
 
   const sessions = useSyncExternalStore(props.sessionsRuntime.list.subscribe, props.sessionsRuntime.list.getSnapshot)
   const workspaces = useSyncExternalStore(props.workspacesRuntime.list.subscribe, props.workspacesRuntime.list.getSnapshot)
@@ -169,6 +172,12 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
     }
     else if (active?.kind === 'all') {
       void clearArchive(async () => {
+        await refreshSessions()
+        await resyncWorkspaces()
+      })
+    }
+    else if (active?.kind === 'workspace') {
+      void deleteWorkspaceSessions(active.sessionIds, async () => {
         await refreshSessions()
         await resyncWorkspaces()
       })
@@ -253,6 +262,42 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
                 {' '}
                 {text('chats')}
               </span>
+              {group.id !== 'ungrouped' && (
+                <Menu
+                  open={openGroupMenu === group.id}
+                  onClose={() => setOpenGroupMenu(null)}
+                  onSelect={(id) => {
+                    setOpenGroupMenu(null)
+                    if (id === 'delete') {
+                      setConfirm({
+                        kind: 'workspace',
+                        workspaceTitle: group.title,
+                        sessionIds: rows.filter(row => row.workspaceId === group.id).map(row => row.sessionId),
+                      })
+                    }
+                  }}
+                  items={[{
+                    id: 'delete',
+                    label: text('deleteProjectChats'),
+                    icon: <IconTrashBin />,
+                    danger: true,
+                  } satisfies MenuEntry]}
+                  portal
+                  align="end"
+                  anchor={(
+                    <button
+                      type="button"
+                      className={K.groupMenuTrigger}
+                      aria-label={text('groupMenuAria')}
+                      aria-haspopup="menu"
+                      aria-expanded={openGroupMenu === group.id}
+                      onClick={() => setOpenGroupMenu(openGroupMenu === group.id ? null : group.id)}
+                    >
+                      <IconEllipsis />
+                    </button>
+                  )}
+                />
+              )}
             </div>
             <ul className={K.list}>
               {group.rows.map(row => (
@@ -301,6 +346,13 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
         onClose={() => setConfirm(null)}
         title={text('deleteAllTitle')}
         description={text('deleteAllBody')}
+        footer={footer}
+      />
+      <Modal
+        open={confirm?.kind === 'workspace'}
+        onClose={() => setConfirm(null)}
+        title={text('deleteProjectTitle')}
+        description={confirm?.kind === 'workspace' ? text('deleteProjectBody', { count: confirm.sessionIds.length, workspace: confirm.workspaceTitle }) : ''}
         footer={footer}
       />
     </div>
