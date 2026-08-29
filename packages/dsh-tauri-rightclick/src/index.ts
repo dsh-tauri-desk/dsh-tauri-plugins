@@ -5,8 +5,7 @@
  *   - POST /api/dsh-rightclick-menu/open-url 用系统默认浏览器打开 http/https 外链
  *     （Harness 的 host.openPath 只接受文件系统路径，URL 必须走这里）。
  *
- * 两个路由都只接受同源 JSON POST（isSameOriginJsonRequest 校验），并串行化
- * 变更操作（mutation lock），避免并发删除同一会话造成目录/账本竞争。
+ * 路由只接受同源 JSON POST（isSameOriginJsonRequest 校验）。
  */
 
 import type { HostContext, HostRoute } from './types.js'
@@ -26,7 +25,7 @@ export const name = RIGHTCLICK_PLUGIN_NAME
  *  workspaceRegistry（归档过渡/记账）、agents（停止运行中会话）、
  *  sessions（live session 脱离）、storageDomain（投影/工作区账本）。
  */
-export const inject = ['webServer', 'sessionPersistence', 'workspaceRegistry', 'agents', 'sessions', 'storageDomain']
+export const inject = ['webServer']
 
 /** API 路由前缀（客户端同源 fetch）。 */
 export const API_PREFIX = RIGHTCLICK_API_PREFIX

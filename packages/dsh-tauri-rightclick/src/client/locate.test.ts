@@ -7,6 +7,7 @@ import {
   rowFrom,
   selectedUrl,
   titleFrom,
+  ungroupedRowFrom,
   workspaceForSession,
   workspaceFrom,
 } from './locate'
@@ -126,6 +127,40 @@ describe('selectedUrl', () => {
   it('matches a bare http(s) URL in selected text', () => {
     expect(selectedUrl('https://example.com/x')).toBe('https://example.com/x')
     expect(selectedUrl('foo https://example.com')).toBeNull()
+  })
+})
+
+describe('ungroupedRowFrom', () => {
+  function ungroupedRow(label: string): Element {
+    const row = document.createElement('div')
+    row.setAttribute('role', 'treeitem')
+    row.setAttribute('aria-expanded', 'true')
+    const title = document.createElement('span')
+    title.textContent = label
+    row.appendChild(title)
+    return row
+  }
+
+  it('recognizes Chinese and English group labels', () => {
+    for (const label of ['未分组', 'Ungrouped']) {
+      const row = ungroupedRow(label)
+      document.body.appendChild(row)
+      expect(ungroupedRowFrom(row)).toBe(row)
+      row.remove()
+    }
+  })
+
+  it('rejects non-group rows and workspace action rows', () => {
+    const session = document.createElement('div')
+    session.setAttribute('role', 'treeitem')
+    session.setAttribute('aria-selected', 'true')
+    expect(ungroupedRowFrom(session)).toBeNull()
+
+    const row = ungroupedRow('未分组')
+    const action = document.createElement('button')
+    action.setAttribute('aria-label', '工作区“未分组”的操作')
+    row.appendChild(action)
+    expect(ungroupedRowFrom(row)).toBeNull()
   })
 })
 

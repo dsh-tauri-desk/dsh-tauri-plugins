@@ -1,6 +1,6 @@
 /**
  * actions.ts — 菜单项对应的业务动作：官方操作转交官方组件；插件自有能力
- * （永久删除、资源管理器打开目录、默认浏览器打开外链、剪贴板）走宿主能力。
+ * （资源管理器、默认浏览器打开外链、剪贴板）走宿主能力。
  */
 import type {
   SessionsRuntimeLike,
@@ -152,7 +152,7 @@ export async function archiveUngroupedSessions(workspaces: WorkspacesRuntimeLike
     return !assigned.has(id) && !archived.has(id) && session?.blank !== true
   })
   if (!sessionIds.length) {
-    toast(text('noWorkspaceSessions'))
+    toast(text('noUngroupedSessions'))
     return
   }
   // eslint-disable-next-line no-alert
@@ -178,13 +178,4 @@ export async function archiveWorkspaceSessions(workspaces: WorkspacesRuntimeLike
   for (const id of sessionIds)
     await workspaces.archiveSession(id)
   toast(text('workspaceSessionsArchived', { count: sessionIds.length }))
-}
-
-/** 移除工作区（仅移除注册，不动目录/文件/会话日志）。 */
-export async function removeWorkspace(workspaces: WorkspacesRuntimeLike, workspace: WorkspaceViewLike): Promise<void> {
-  // eslint-disable-next-line no-alert
-  if (!globalThis.confirm(text('removeWorkspaceConfirm', { title: workspace.title })))
-    return
-  await workspaces.delete(workspace.workspaceId)
-  toast(text('workspaceRemoved'))
 }

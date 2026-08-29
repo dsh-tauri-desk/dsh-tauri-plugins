@@ -1,4 +1,4 @@
-/** Context menu / toast / confirm dialog styles generated as css-render nodes. */
+/** Context menu and toast styles generated as css-render nodes. */
 import { CssRender } from 'css-render'
 import { RIGHTCLICK_CLASSES as K, RIGHTCLICK_STYLE_ID } from './constants'
 

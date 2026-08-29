@@ -17,7 +17,6 @@ import {
   forkSession,
   openExternalUrl,
   openInExplorer,
-  removeWorkspace,
   renameSession,
 } from './actions'
 import { copyText, readClipboard } from './clipboard'
@@ -174,7 +173,7 @@ export function installContextMenu(ctx: ClientContext): () => void {
     if (event.defaultPrevented)
       return
     const row = rowFrom(event.target)
-    const ungroupedRow = !row ? ungroupedRowFrom(event.target, workspaces) : null
+    const ungroupedRow = !row ? ungroupedRowFrom(event.target) : null
     const domSessionWorkspace = row ? workspaceFrom(event.target, workspaces) : null
     const session = row ? resolveSession(sessions, row, domSessionWorkspace?.workspace ?? null) : null
     // The visible blank “New Session” is only a provisional composer target.
@@ -202,7 +201,7 @@ export function installContextMenu(ctx: ClientContext): () => void {
     const registeredExtensions = extensionsRegistry.list()
     globalThis.dispatchEvent(new CustomEvent(CONTEXT_MENU_EVENT, {
       detail: {
-        row: row || workspaceTarget?.targetRow || null,
+        row: row || ungroupedRow || workspaceTarget?.targetRow || null,
         action: row ? officialAction(row) : null,
         session,
         workspace: workspaceTarget?.workspace || null,
@@ -240,7 +239,7 @@ export function installContextMenu(ctx: ClientContext): () => void {
       add(root, text('refresh'), () => globalThis.location.reload(), 'Ctrl+R')
     }
     else if (ungroupedRow) {
-      add(root, text('archiveWorkspaceSessions'), () => archiveUngroupedSessions(workspaces, sessions))
+      add(root, text('archiveUngroupedSessions'), () => archiveUngroupedSessions(workspaces, sessions))
       split(root)
       add(root, text('refresh'), () => globalThis.location.reload(), 'Ctrl+R')
     }
@@ -257,7 +256,7 @@ export function installContextMenu(ctx: ClientContext): () => void {
       add(root, text('copyWorkspacePath'), () => copyText(workspace.path, 'copiedWorkspacePath'))
       split(root)
       add(root, text('archiveWorkspaceSessions'), () => archiveWorkspaceSessions(workspaces, workspace))
-      add(root, text('removeWorkspace'), () => removeWorkspace(workspaces, workspace))
+
       split(root)
       add(root, text('refresh'), () => globalThis.location.reload(), 'Ctrl+R')
     }

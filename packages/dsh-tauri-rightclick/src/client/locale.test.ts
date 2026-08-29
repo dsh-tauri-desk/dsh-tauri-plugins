@@ -30,13 +30,6 @@ describe('text', () => {
     expect(text('archiveWorkspaceConfirm', { title: 'Minecraft', count: 3 }))
       .toBe('归档“Minecraft”中的 3 个会话？')
   })
-
-  it('renders multiline confirm messages', () => {
-    installLocale(fakeCtx('zh'))
-    const message = text('removeWorkspaceConfirm', { title: 'project' })
-    expect(message).toContain('project')
-    expect(message).toContain('\n')
-  })
 })
 
 describe('installLocale', () => {

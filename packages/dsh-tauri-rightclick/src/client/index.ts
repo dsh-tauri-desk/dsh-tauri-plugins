@@ -4,13 +4,13 @@
  * 按目标组装菜单（全部为稳定的无障碍语义 + 零结构补丁，无 React 组件、无运行时
  * 依赖）：
  *   - 会话行：官方重命名/归档/分叉转交官方组件；插件补充资源管理器打开目录、复制目录/会话 ID；
- *   - 工作区行：新建会话、打开目录、官方重命名、复制路径、归档会话、移除工作区；
+ *   - 工作区行：新建会话、打开目录、官方重命名、复制路径、归档工作区；
  *   - 未分组行：归档全部未分组正式会话、刷新；临时新会话不处理；
  *   - 可编辑元素：撤销/重做/剪切/复制/粘贴/全选；
  *   - 对话正文/设置页：复制所选文本、默认浏览器打开链接、全选当前内容；
  *   - 所有菜单：刷新。
  *
- * 与 node half（src/index.ts）经 /api/dsh-rightclick-menu/* 通信（delete/open-url）。
+ * 与 node half（src/index.ts）经 /api/dsh-rightclick-menu/* 通信（open-url）。
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import {
