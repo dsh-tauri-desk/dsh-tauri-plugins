@@ -116,14 +116,17 @@ export function useArchiveUi(): ArchiveUiState {
   return useSyncExternalStore(archiveStore.subscribe, archiveStore.getSnapshot)
 }
 
+/** 归档页排序方式（更新时间 / 创建时间 / 标题）。 */
 export function setSort(sort: ArchiveSort): void {
   archiveStore.set(state => ({ ...state, sort }))
 }
 
+/** 归档页搜索关键字。 */
 export function setQuery(query: string): void {
   archiveStore.set(state => ({ ...state, query }))
 }
 
+/** 归档页项目筛选（'all' 显示全部组）。 */
 export function setWorkspaceFilter(workspaceId: string): void {
   archiveStore.set(state => ({ ...state, workspaceId }))
 }
