@@ -67,6 +67,51 @@ describe('archiveStore suppressed session ids', () => {
     expect(archiveStore.getSnapshot().error).not.toBe('')
   })
 
+  it('ignores a stale refresh response that resolves after a newer one', async () => {
+    let slowResolve!: (value: Response) => void
+    globalThis.fetch = vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => {
+        slowResolve = resolve
+      }))
+      .mockImplementationOnce(async () => new Response(JSON.stringify(archivedPayload(['session-2'])), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }))
+    const stale = refreshArchived()
+    const latest = refreshArchived()
+    await latest
+    expect(archiveStore.getSnapshot().archived.archivedSessionIds).toEqual(['session-2'])
+    // 旧响应此刻才到：不得覆盖新数据。
+    slowResolve(new Response(JSON.stringify(archivedPayload(['session-1'])), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }))
+    await stale
+    expect(archiveStore.getSnapshot().archived.archivedSessionIds).toEqual(['session-2'])
+  })
+
+  it('a stale refresh must not clear suppression added after it started', async () => {
+    let slowResolve!: (value: Response) => void
+    globalThis.fetch = vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => {
+        slowResolve = resolve
+      }))
+      .mockImplementationOnce(async () => new Response(JSON.stringify(archivedPayload([])), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }))
+    const stale = refreshArchived()
+    await refreshArchived()
+    // 新变更在旧刷新返回前写入抑制标记。
+    archiveStore.set(state => ({ ...state, suppressedSessionIds: ['session-3'] }))
+    slowResolve(new Response(JSON.stringify(archivedPayload([])), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    }))
+    await stale
+    expect(archiveStore.getSnapshot().suppressedSessionIds).toEqual(['session-3'])
+  })
+
   it('archive API is a POST to /api/dsh-session/archive', async () => {
     await postArchive('session-1', 'w1')
     const call = vi.mocked(globalThis.fetch).mock.calls[0]

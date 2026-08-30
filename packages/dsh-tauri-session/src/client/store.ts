@@ -128,20 +128,31 @@ export function setWorkspaceFilter(workspaceId: string): void {
   archiveStore.set(state => ({ ...state, workspaceId }))
 }
 
+/** 归档刷新代数：只允许最新一次刷新的响应写回 store（过期响应整体丢弃）。 */
+let refreshGeneration = 0
+
 /**
  * 拉取归档载荷并写入 store。
  *
  * 刷新成功后清空抑制标记：抑制只服务于「变更 → 刷新」窗口内的幽灵行
  * （宿主归档集合在变更后短暂含过期 id）。刷新成功即载荷权威，若保留抑制，
  * 取消归档后再归档的会话会被旧标记永久过滤出归档页（#235）。
+ *
+ * 并发保护：每次调用推进代数，只有仍是最新代数的响应才写回 —— 否则慢的旧
+ * 响应会覆盖新数据，或把刚写入的抑制标记清掉（幽灵行提前闪现）。
  */
 export async function refreshArchived(): Promise<void> {
+  const generation = ++refreshGeneration
   archiveStore.set(state => ({ ...state, loading: true, error: '' }))
   try {
     const archived = await fetchArchived()
+    if (generation !== refreshGeneration)
+      return
     archiveStore.set(state => ({ ...state, archived, loading: false, suppressedSessionIds: [] }))
   }
   catch (error) {
+    if (generation !== refreshGeneration)
+      return
     archiveStore.set(state => ({ ...state, loading: false, error: errMessage(error) }))
   }
 }

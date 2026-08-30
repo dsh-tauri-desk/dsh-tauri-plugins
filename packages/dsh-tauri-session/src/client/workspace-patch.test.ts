@@ -92,4 +92,15 @@ describe('workspaceFromRow', () => {
     expect(workspaceFromRow(row, workspacesRuntime([minecraft, duplicate]))).toBeNull()
     row.remove()
   })
+
+  it('never matches a workspace with a blank or missing title', () => {
+    const blank = { workspaceId: 'w0', title: '   ', path: 'C:/blank', sessionIds: [] }
+    const untitled = { workspaceId: 'w9', path: 'C:/untitled', sessionIds: [] }
+    const row = workspaceRow('')
+    document.body.appendChild(row)
+    // 空文本行不得与空白/缺失标题的工作区误命中（空字符串 === 空字符串）。
+    expect(workspaceFromRow(row, workspacesRuntime([blank]))).toBeNull()
+    expect(workspaceFromRow(row, workspacesRuntime([untitled]))).toBeNull()
+    row.remove()
+  })
 })

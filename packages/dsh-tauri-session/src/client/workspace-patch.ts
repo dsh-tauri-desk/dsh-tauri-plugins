@@ -74,16 +74,20 @@ function workspaceGroupOf(node: Element): Element | undefined {
 /**
  * 从项目行解析工作区（按 aria-label/title/纯文本与运行时快照唯一匹配）。
  * 官方行标题即工作区标题（重名被官方重命名拦截），唯一命中才返回。
+ * 空白/缺失标题的工作区不参与匹配，避免与行内空文本节点误命中。
  */
 export function workspaceFromRow(row: Element, workspacesRuntime: WorkspacesRuntimeLike): WorkspaceViewLike | null {
   const items = [...workspacesRuntime.list.getSnapshot().items]
   const matches = items.filter((workspace) => {
-    if ([row.getAttribute('aria-label'), row.getAttribute('title')].some(value => value?.trim() === workspace.title))
+    const title = workspace.title?.trim()
+    if (!title)
+      return false
+    if ([row.getAttribute('aria-label'), row.getAttribute('title')].some(value => value?.trim() === title))
       return true
     return [...row.querySelectorAll('span,button,div')].some(node =>
       node.closest('[role="treeitem"]') === row
       && node.children.length === 0
-      && node.textContent?.trim() === workspace.title)
+      && node.textContent?.trim() === title)
   })
   return matches.length === 1 ? matches[0] : null
 }
@@ -105,7 +109,8 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
   let dialogHost: HTMLDivElement | undefined
   /** 菜单条目清理器：与条目元素关联，元素脱离文档后即被丢弃。 */
   const itemCleanups: Array<{ element: HTMLElement, cleanup: () => void }> = []
-  const rowCleanups: Array<() => void> = []
+  /** 行「…」按钮清理器：与按钮元素关联，行被官方替换后即被丢弃。 */
+  const rowCleanups: Array<{ element: HTMLElement, cleanup: () => void }> = []
 
   function closeDialog(): void {
     dialogRoot?.unmount()
@@ -169,9 +174,12 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     ellipsis.setAttribute(WORKSPACE_MENU_ANCHOR_ATTRIBUTE, '1')
     const onAnchorClick = (): void => recordAnchor(ellipsis)
     ellipsis.addEventListener('click', onAnchorClick, { capture: true })
-    rowCleanups.push(() => {
-      ellipsis.removeEventListener('click', onAnchorClick, { capture: true })
-      ellipsis.removeAttribute(WORKSPACE_MENU_ANCHOR_ATTRIBUTE)
+    rowCleanups.push({
+      element: ellipsis,
+      cleanup: () => {
+        ellipsis.removeEventListener('click', onAnchorClick, { capture: true })
+        ellipsis.removeAttribute(WORKSPACE_MENU_ANCHOR_ATTRIBUTE)
+      },
     })
   }
 
@@ -249,10 +257,15 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
 
   /** 全量扫描：项目行记录监听 + portal 菜单追加归档条目。 */
   function scan(): void {
-    // 丢弃已脱离文档的菜单条目清理器，避免数组随菜单反复开关无限增长。
+    // 丢弃已脱离文档的菜单条目/行清理器，避免数组随菜单反复开关、行被官方
+    // 替换而无限增长（脱离文档的监听器随元素 GC，无需逐个执行 cleanup）。
     for (let index = itemCleanups.length - 1; index >= 0; index--) {
       if (!itemCleanups[index].element.isConnected)
         itemCleanups.splice(index, 1)
+    }
+    for (let index = rowCleanups.length - 1; index >= 0; index--) {
+      if (!rowCleanups[index].element.isConnected)
+        rowCleanups.splice(index, 1)
     }
     const sidebar = document.querySelector<HTMLElement>(SIDEBAR_SELECTOR)
     if (sidebar) {
@@ -293,7 +306,7 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     for (const { cleanup } of itemCleanups)
       cleanup()
     itemCleanups.length = 0
-    for (const cleanup of rowCleanups)
+    for (const { cleanup } of rowCleanups)
       cleanup()
     rowCleanups.length = 0
     if (timer !== undefined)
