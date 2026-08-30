@@ -22,7 +22,7 @@
  * 保留了骨架期的 `shell.overlay` 条目（id dsh-tauri-ui）作为未来 chrome
  * 的落点，与设置侧边栏（id dsh-tauri-ui-settings）并行不冲突。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
 import {
@@ -50,16 +50,20 @@ export const inject = ['slots', 'layout', 'locale']
  */
 export function apply(ctx: ClientContext): void {
   // 骨架期落点：未来桌面 chrome（顶部导航/窗口控件等）在此渲染。
+  // alpha 的 slot 必须先由父条目的 children 表声明才能注册进入；shell.overlay
+  // 由 ui-layout 的 AppFrame 声明，故通过 inject 等其声明（live）后再注册，
+  // 避免 `slot "shell.overlay" is not declared` 运行时报错。
   ctx.effect(
     () =>
-      ctx.slots.register(
-        {
-          name: SETTINGS_SHELL_OVERLAY_SLOT,
-          id: SETTINGS_SHELL_SEAT_ID,
-          registrant: SETTINGS_REGISTRANT,
-        },
-        TauriUiSeat,
-      ),
+      ctx.slots.inject(SETTINGS_SHELL_OVERLAY_SLOT, () =>
+        ctx.slots.register(
+          {
+            name: SETTINGS_SHELL_OVERLAY_SLOT,
+            id: SETTINGS_SHELL_SEAT_ID,
+            registrant: SETTINGS_REGISTRANT,
+          },
+          TauriUiSeat,
+        )),
     'dsh-tauri-ui: shell.overlay seat',
   )
 

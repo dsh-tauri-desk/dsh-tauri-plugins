@@ -1,6 +1,7 @@
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
 import type { ReactElement } from 'react'
 import type { ConversationInputLeftProps, ExtensionRuntimeContext, McpInjected, PanelProtocol, SkillsInjected, Translate } from './types'
+import { compatCtx } from '@dsh-tauri/client-lib/compat'
 import { useEffect, useId, useRef, useState } from 'react'
 import { CONVERSATION_INPUT_LEFT_SLOT, INPUT_PREFILL_ID, INPUT_PREFILL_ORDER, INPUT_PREFILL_PRIORITY, LOCALE_NAMESPACE, PANEL_ACTION_ID, PANEL_ACTION_ORDER, PANEL_ACTION_PRIORITY, PANEL_ID, PANEL_PROTOCOL_NAME, PANEL_SLOT_NAME, PLUGIN_ID, SKILL_CREATOR_DRAFT } from './constants'
 import { IconExtension } from './icons'
@@ -94,23 +95,43 @@ export function ExtensionPanel({ t, skills, mcp, createSkill }: { t: Translate, 
 
 export function installExtensionPanel(ctx: ClientContext, t: Translate, skills: SkillsInjected, mcp: McpInjected): void {
   ctx.slots.inject(PANEL_SLOT_NAME as never, () => {
-    const protocol = ctx.reflect.get(PANEL_PROTOCOL_NAME) as PanelProtocol | undefined
-    if (protocol === undefined) {
-      console.warn(`[${PLUGIN_ID}] ${PANEL_PROTOCOL_NAME} unavailable; extension panel disabled.`)
-      return () => {}
+    let registration: (() => void) | undefined
+    let retryTimer: number | undefined
+
+    const attemptRegistration = (): void => {
+      if (registration)
+        return
+      const protocol = ctx.reflect.get(PANEL_PROTOCOL_NAME) as PanelProtocol | undefined
+      if (!protocol)
+        return
+      const runtime = compatCtx(ctx) as unknown as ExtensionRuntimeContext
+      const createSkill = async (): Promise<void> => {
+        const id = chooseWorkspace(runtime)
+        if (id === undefined)
+          throw new Error(t('workspaceUnavailable'))
+        const sessionId = await runtime.workspaces.connectWorkspace?.(id)
+        if (!sessionId)
+          throw new Error(t('workspaceUnavailable'))
+        pendingPrefills.add(sessionId)
+        protocol.closePanelContent()
+        runtime.sessions.open(sessionId)
+      }
+      const Content = (): ReactElement => <ExtensionPanel t={t} skills={skills} mcp={mcp} createSkill={createSkill} />
+      const Action = (): ReactElement => <protocol.ActionItem id={PANEL_ID} icon={<IconExtension />} onClick={() => protocol.renderPanelContent({ id: PANEL_ID, render: Content, locale: LOCALE_NAMESPACE })}>{t('extension')}</protocol.ActionItem>
+      registration = ctx.slots.register({ name: PANEL_SLOT_NAME, id: PANEL_ACTION_ID, registrant: PLUGIN_ID, order: PANEL_ACTION_ORDER, priority: PANEL_ACTION_PRIORITY, locale: LOCALE_NAMESPACE, inject: () => ({}) } as never, Action)
+      if (retryTimer !== undefined) {
+        window.clearInterval(retryTimer)
+        retryTimer = undefined
+      }
     }
-    const runtime = ctx as unknown as ExtensionRuntimeContext
-    const createSkill = async (): Promise<void> => {
-      const id = chooseWorkspace(runtime)
-      if (id === undefined)
-        throw new Error(t('workspaceUnavailable'))
-      const sessionId = await runtime.workspaces.connectWorkspace(id)
-      pendingPrefills.add(sessionId)
-      protocol.closePanelContent()
-      runtime.sessions.open(sessionId)
+
+    attemptRegistration()
+    if (!registration)
+      retryTimer = window.setInterval(attemptRegistration, 50)
+    return () => {
+      if (retryTimer !== undefined)
+        window.clearInterval(retryTimer)
+      registration?.()
     }
-    const Content = (): ReactElement => <ExtensionPanel t={t} skills={skills} mcp={mcp} createSkill={createSkill} />
-    const Action = (): ReactElement => <protocol.ActionItem id={PANEL_ID} icon={<IconExtension />} onClick={() => protocol.renderPanelContent({ id: PANEL_ID, render: Content, locale: LOCALE_NAMESPACE })}>{t('extension')}</protocol.ActionItem>
-    return ctx.slots.register({ name: PANEL_SLOT_NAME, id: PANEL_ACTION_ID, registrant: PLUGIN_ID, order: PANEL_ACTION_ORDER, priority: PANEL_ACTION_PRIORITY, locale: LOCALE_NAMESPACE, inject: () => ({}) } as never, Action)
   })
 }

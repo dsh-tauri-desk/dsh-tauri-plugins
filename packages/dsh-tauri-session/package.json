@@ -52,6 +52,9 @@
     "test": "vitest",
     "typecheck": "tsc"
   },
+  "devDependencies": {
+    "@dsh-tauri/client-lib": "workspace:*"
+  },
   "publishConfig": {
     "exports": {
       ".": "./dist/index.js",

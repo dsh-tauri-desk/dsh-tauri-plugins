@@ -1,4 +1,4 @@
-import type { SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionListState } from '@dsh-tauri/client-lib/types'
 
 /** Selector hook shape shared by standard slot props. */
 export type SelectorHook<T> = <S>(sel: (state: T) => S) => S

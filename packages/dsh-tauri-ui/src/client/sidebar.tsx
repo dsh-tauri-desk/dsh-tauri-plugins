@@ -194,12 +194,15 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
  * @param ctx - 客户端根上下文。
  */
 export function registerSettingsSidebar(ctx: Context): void {
+  // shell.overlay 由 ui-layout 的 AppFrame 声明；alpha 要求注册进入前该槽已
+  // 由父条目 children 表声明，故用 inject 等其声明 live 后再注册。
   ctx.effect(
     () =>
-      ctx.slots.register(
-        { name: SETTINGS_SHELL_OVERLAY_SLOT, id: SETTINGS_SIDEBAR_ID, registrant: SETTINGS_REGISTRANT },
-        SettingsSidebar,
-      ),
+      ctx.slots.inject(SETTINGS_SHELL_OVERLAY_SLOT, () =>
+        ctx.slots.register(
+          { name: SETTINGS_SHELL_OVERLAY_SLOT, id: SETTINGS_SIDEBAR_ID, registrant: SETTINGS_REGISTRANT },
+          SettingsSidebar,
+        )),
     'dsh-tauri-ui: settings sidebar',
   )
 }

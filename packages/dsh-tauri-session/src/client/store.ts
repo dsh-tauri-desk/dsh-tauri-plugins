@@ -10,7 +10,7 @@
  * （ctx.workspaces.manager.refresh）重新拉取归档镜像，否则列表原地不动。
  */
 import type { ArchivedListPayload, ArchiveSort, ArchiveUiState } from './types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@dsh-tauri/client-lib'
 import { useSyncExternalStore } from 'react'
 import { SESSION_API_PREFIX } from './constants'
 import { text } from './locale'

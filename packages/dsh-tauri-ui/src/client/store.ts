@@ -1,5 +1,5 @@
 import type { SettingsUiState } from './types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@dsh-tauri/client-lib'
 import { useSyncExternalStore } from 'react'
 import { RAIL_WIDTH_MAX, RAIL_WIDTH_MIN } from './constants'
 

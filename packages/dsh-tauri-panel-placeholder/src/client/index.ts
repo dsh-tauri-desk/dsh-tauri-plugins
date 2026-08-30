@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 /**
  * dsh-tauri-panel-placeholder 客户端插件体（browser half）：panel 协议样板。
  *
@@ -12,8 +13,7 @@
  *
  * 无业务逻辑：样板只演示协议接入点与「会话区替换」的最小形态。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
 import { PLUGIN_ID } from './constants'
 import { installPanelLocale } from './locale'
 import { installPanel } from './panel'

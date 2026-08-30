@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
 import type { SessionListSnapshot, WorktreeHydrationSessionsRuntime } from './types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HANDOFF_WINDOW_MS } from './constants'

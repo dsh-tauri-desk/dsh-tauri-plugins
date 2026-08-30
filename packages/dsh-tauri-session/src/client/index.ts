@@ -12,7 +12,8 @@
  * 与 node half（src/index.ts）经 /api/dsh-session/* 通信（archived/archive/
  * archive-workspace/unarchive/clear）。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import { compatCtx } from '@dsh-tauri/client-lib/compat'
 import {
   SESSION_ARCHIVE_PATCH_EFFECT,
   SESSION_ARCHIVE_SECTION_EFFECT,
@@ -38,29 +39,33 @@ export const inject = ['slots', 'locale', 'sessions', 'workspaces']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  installLocale(ctx)
+  const cx = compatCtx(ctx)
+  installLocale(cx)
 
   ctx.effect(() => mountSessionStyles(), SESSION_STYLES_EFFECT)
 
   // 1) 设置页「归档」分区（settings.section 单槽注册；导航行/内容由官方设置侧边栏投影）。
   // 'settings.section' 不在本插件类型图的 SlotMap 键（声明权在 ui-sidebar / ui-layout），
   // 此处对 options 显式 cast（先例：dsh-tauri-worktree 的 conversation.input.dock）。
+  // alpha 要求注册进入前槽已由父条目 children 表声明：settings.section 由
+  // ui-settings-general 的 sidebar.settings 条目声明，故用 inject 等其声明 live。
   ctx.effect(
     () =>
-      ctx.slots.register(
-        {
-          name: SETTINGS_SECTION_SLOT,
-          id: SESSION_SECTION_ID,
-          order: SESSION_SECTION_ORDER,
-          registrant: SESSION_REGISTRANT,
-          label: () => text('section'),
-          inject: () => ({ sessionsRuntime: ctx.sessions, workspacesRuntime: ctx.workspaces }),
-        } as never,
-        ArchivePanel,
-      ),
+      ctx.slots.inject(SETTINGS_SECTION_SLOT as never, () =>
+        ctx.slots.register(
+          {
+            name: SETTINGS_SECTION_SLOT,
+            id: SESSION_SECTION_ID,
+            order: SESSION_SECTION_ORDER,
+            registrant: SESSION_REGISTRANT,
+            label: () => text('section'),
+            inject: () => ({ sessionsRuntime: cx.sessions, workspacesRuntime: cx.workspaces }),
+          } as never,
+          ArchivePanel,
+        )),
     SESSION_ARCHIVE_SECTION_EFFECT,
   )
 
   // 2) 工作区浏览器补丁：替换「删除工作区」+ 隐藏归档会话行。
-  ctx.effect(() => installWorkspaceArchivePatch(ctx.workspaces, ctx.sessions as unknown as import('./types').SessionsRuntimeLike), SESSION_ARCHIVE_PATCH_EFFECT)
+  ctx.effect(() => installWorkspaceArchivePatch(cx.workspaces as unknown as import('./types').WorkspacesRuntimeLike, cx.sessions as unknown as import('./types').SessionsRuntimeLike), SESSION_ARCHIVE_PATCH_EFFECT)
 }

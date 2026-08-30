@@ -1,8 +1,9 @@
 import type { Context } from '@deepseek-ai/cordis'
-import type { WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, WorkspaceId } from '@dsh-tauri/client-lib/types'
 import type { CSSProperties, ReactElement } from 'react'
 import type { SidebarRootProps } from './types'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
+import { compatCtx } from '@dsh-tauri/client-lib/compat'
 import { useEffect, useRef, useState } from 'react'
 import { COLLAPSE_SETTLE_MS, PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, SCROLLBAR_LINGER_MS } from './constants'
 import { ChatOutline, FishMark } from './icons'
@@ -181,6 +182,7 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
  * @param ctx - 客户端根上下文。
  */
 export function installSidebarRoot(ctx: Context): void {
+  const cx = compatCtx(ctx as ClientContext)
   ctx.slots.inject('sidebar' as never, () =>
     ctx.slots.register(
       {
@@ -192,7 +194,7 @@ export function installSidebarRoot(ctx: Context): void {
           'sidebar.panel.action': { kind: 'list', scope: 'root' },
         },
         inject: () => ({
-          startSession: (workspaceId?: WorkspaceId) => ctx.workspaces.startSession(workspaceId),
+          startSession: (workspaceId?: WorkspaceId) => cx.workspaces.startSession?.(workspaceId),
           toggleSidebar: () => ctx.layout.toggleSidebar(),
         }),
       } as never,

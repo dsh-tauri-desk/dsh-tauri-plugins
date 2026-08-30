@@ -11,7 +11,7 @@
  * 且每个来源只交接一次、有时效窗口——历史遗留工作树、用户事后回到源会话、点击新建
  * 会话等场景绝不抢焦点（否则「新建会话」会被误跳到工作树会话）。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
 import type { SessionListSnapshot, WorkspaceListSnapshot, WorktreeHydrationSessionsRuntime } from './types'
 import { HANDOFF_WINDOW_MS, HYDRATION_MAX_RETRIES, HYDRATION_RETRY_DELAY_MS } from './constants'
 import { openWorktreeSession } from './handoff'

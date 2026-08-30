@@ -11,7 +11,8 @@
  *
  * 与 node half（src/index.ts）经 /api/dsh-worktree/* 通信（create/status/checkout/discard）。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import { compatCtx } from '@dsh-tauri/client-lib/compat'
 import {
   HYDRATION_EFFECT,
   SESSION_ICONS_EFFECT,
@@ -37,7 +38,8 @@ export const inject = ['slots', 'layout', 'locale', 'sessions', 'workspaces']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  installLocale(ctx)
+  const cx = compatCtx(ctx)
+  installLocale(cx)
   ctx.effect(
     () => {
       const unmountModeSelectStyles = mountModeSelectStyles()
@@ -49,9 +51,9 @@ export function apply(ctx: ClientContext): void {
     },
     STYLES_EFFECT,
   )
-  registerModeSelect(ctx)
-  registerSurface(ctx)
-  registerDialog(ctx)
-  ctx.effect(() => installWorktreeHydration(ctx), HYDRATION_EFFECT)
+  registerModeSelect(cx)
+  registerSurface(cx)
+  registerDialog(cx)
+  ctx.effect(() => installWorktreeHydration(cx), HYDRATION_EFFECT)
   ctx.effect(() => installSessionIcons(), SESSION_ICONS_EFFECT)
 }

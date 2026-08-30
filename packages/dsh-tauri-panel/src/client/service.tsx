@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
 import type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@dsh-tauri/client-lib'
 import { useSyncExternalStore } from 'react'
 import { PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, PANEL_PROTOCOL_SERVICE, PANEL_VIEW_COMPONENT_ID, PANEL_VIEW_SLOT, SIDEBAR_INTERACTIVE_SELECTOR, SIDEBAR_KEEP_OPEN_SELECTOR, WORKSPACE_GROUP_SELECTOR } from './constants'
 import { NS } from './locale'
@@ -196,9 +196,12 @@ export function installPanelService(ctx: Context): void {
     renderPanelContent,
     closePanelContent,
   }
+  // Publish synchronously during apply: alpha slot injections can run before
+  // sibling effects, so publishing from inside ctx.effect makes consumers see
+  // an absent protocol and permanently skip their action registration.
+  rootCtx = ctx
+  const disposeProtocol = ctx.reflect.provide(PANEL_PROTOCOL_SERVICE, api)
   ctx.effect(() => {
-    rootCtx = ctx
-    const disposeProtocol = ctx.reflect.provide(PANEL_PROTOCOL_SERVICE, api)
     return () => {
       if (rootCtx === ctx) {
         closePanelContent()

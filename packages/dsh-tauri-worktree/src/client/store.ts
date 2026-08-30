@@ -5,7 +5,7 @@ import type {
   WorktreeStatus,
   WorktreeUiState,
 } from './types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@dsh-tauri/client-lib'
 /**
  * store.ts — dsh-tauri-worktree 的共享客户端状态（per-session 工作树状态 + RPC）。
  *

@@ -1,7 +1,8 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
-import type { ModeSelectProps, SessionsRuntime } from './types'
+import type { InputActions, ModeSelectProps, SessionsRuntime } from './types'
 import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import { compatCtx } from '@dsh-tauri/client-lib/compat'
 import { CssRender } from 'css-render'
 /**
  * select.tsx — 「标准模式」右侧的会话工作模式选择器。
@@ -12,6 +13,7 @@ import { CssRender } from 'css-render'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  COMPOSER_MODE_BUTTON_SELECTOR,
   COMPOSER_SEAT_SELECTOR,
   HERO_PRESET_SLOT_SELECTOR,
   INPUT_DOCK_SLOT,
@@ -81,8 +83,13 @@ export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
 
     let host: HTMLSpanElement | null = null
     const place = (): void => {
+      // rc.2 exposes the hero preset slot; alpha removed it but keeps the
+      // stable composer mode button. Prefer the old anchor and fall back to
+      // the button without depending on generated CSS module hashes.
       const presetSlot = composerSeat.querySelector<HTMLElement>(HERO_PRESET_SLOT_SELECTOR)
-      if (!presetSlot) {
+      const modeButton = composerSeat.querySelector<HTMLElement>(COMPOSER_MODE_BUTTON_SELECTOR)
+      const target = presetSlot ?? modeButton
+      if (!target) {
         setPortalHost(null)
         host?.remove()
         host = null
@@ -93,8 +100,8 @@ export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
         host.dataset.dshTauriWorktreeMode = sessionId
         host.className = MODE_SELECT_CLASSES.host
       }
-      if (presetSlot.nextElementSibling !== host)
-        presetSlot.after(host)
+      if (target.nextElementSibling !== host)
+        target.after(host)
       setPortalHost(host)
     }
 
@@ -113,6 +120,16 @@ export function WorktreeModeSelect(props: ModeSelectProps): ReactElement {
       {portalHost && createPortal(<WorktreeModeControl {...props} />, portalHost)}
     </>
   )
+}
+
+async function waitForInputActions(sessionsRuntime: SessionsRuntime, sessionId: string): Promise<InputActions> {
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const actions = sessionsRuntime.provideInfo(sessionId)?.props?.inputActions
+    if (actions)
+      return actions
+    await new Promise<void>(resolve => window.setTimeout(resolve, 100))
+  }
+  throw new Error('新工作树会话的输入服务尚未就绪')
 }
 
 function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntime }: ModeSelectProps): ReactElement | null {
@@ -153,9 +170,7 @@ function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntim
         })
         await sessionsRuntime.create({ cwd: created.worktreePath, sessionId: targetSessionId })
         await attachWorktreeSession(targetSessionId)
-        const nextActions = sessionsRuntime.provideInfo(targetSessionId)?.props?.inputActions
-        if (!nextActions)
-          throw new Error('新工作树会话的输入服务尚未就绪')
+        const nextActions = await waitForInputActions(sessionsRuntime, targetSessionId)
         nextActions.setDraft(draft)
         if (imageIds.length > 0 && !nextActions.addImages(imageIds))
           throw new Error('无法迁移消息附件到工作树会话')
@@ -270,6 +285,7 @@ function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntim
 
 /** 使用 input.dock 的 session 生命周期，并把控件 portal 到标准模式右侧。 */
 export function registerModeSelect(ctx: Context): void {
+  const cx = compatCtx(ctx as import('@dsh-tauri/client-lib/types').ClientContext)
   ctx.slots.inject(INPUT_DOCK_SLOT as never, () =>
     ctx.slots.register(
       {
@@ -279,7 +295,7 @@ export function registerModeSelect(ctx: Context): void {
         locale: NS,
         inject: (sessionId: string | undefined) => sessionId === undefined
           ? undefined
-          : { sessionId, sessionsRuntime: ctx.sessions as unknown as SessionsRuntime },
+          : { sessionId, sessionsRuntime: cx.sessions as unknown as SessionsRuntime },
       } as never,
       WorktreeModeSelect,
     ))

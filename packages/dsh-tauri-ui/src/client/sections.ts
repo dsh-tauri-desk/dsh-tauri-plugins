@@ -1,4 +1,4 @@
-import type { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SlotRegistry } from '@dsh-tauri/client-lib/types'
 import type { SettingsRow } from './types'
 import { useMemo, useSyncExternalStore } from 'react'
 import { SETTINGS_ONBOARDING_SLOT, SETTINGS_SECTION_SLOT } from './constants'

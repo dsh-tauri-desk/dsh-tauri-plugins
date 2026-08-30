@@ -4,10 +4,13 @@ import { join } from 'node:path'
 import process from 'node:process'
 
 function clientBundleRegistration(): Pick<UserConfig, 'banner' | 'footer'> {
-  const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { name: string }
+  const packageName = process.env.npm_package_name
+  const pkg = packageName
+    ? { name: packageName }
+    : JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { name: string }
   const id = JSON.stringify(pkg.name)
   return {
-    banner: `window.__ModuleLoader__.load({id:${id},factory:(require)=>{var module={exports:{}};var exports=module.exports;`,
+    banner: `window.__ModuleLoader__.load({id:${id},factory:(require)=>{const loaderRequire=require;const resolve=(specifier)=>specifier.endsWith('/client')?specifier.slice(0,-7):specifier;require=(specifier)=>loaderRequire(resolve(specifier));var module={exports:{}};var exports=module.exports;`,
     footer: 'return module.exports;}});',
   }
 }

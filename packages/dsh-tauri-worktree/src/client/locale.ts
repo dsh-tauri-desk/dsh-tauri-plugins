@@ -8,7 +8,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { LocaleKey } from './types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@dsh-tauri/client-lib'
 import { useSyncExternalStore } from 'react'
 import { WORKTREE_LOCALE_NAMESPACE as NS } from './constants'
 

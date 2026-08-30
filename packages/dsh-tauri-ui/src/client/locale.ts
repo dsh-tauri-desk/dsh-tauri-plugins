@@ -11,7 +11,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { SettingsUiKey } from './types'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { createSnapshotStore } from '@dsh-tauri/client-lib'
 import { useSyncExternalStore } from 'react'
 import { DICT_EN, DICT_ZH, SETTINGS_UI_NS } from './constants'
 

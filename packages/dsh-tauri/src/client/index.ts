@@ -1,3 +1,4 @@
+import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 /**
  * dsh-tauri 客户端插件体（browser half）：纯消息桥，无 UI、无运行时依赖。
  *
@@ -14,8 +15,7 @@
  *
  * 服务依赖（inject）：layout（侧边栏切换）。locale/slots 均不再需要。
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { ClientContext } from '@dsh-tauri/client-lib/types'
 import { CssRender } from 'css-render'
 import { setupNavBridge } from './bridge'
 import {
@@ -40,6 +40,7 @@ export const inject = PLUGIN_INJECT
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
+  ;(window as Window & { ctx?: ClientContext }).ctx = ctx
   ctx.effect(() => {
     // 侧边栏 UI 微调（一律用稳定的 aria-label 属性选择器，不用生成哈希的
     // CSS module 类名）：

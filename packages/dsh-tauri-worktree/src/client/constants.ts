@@ -82,4 +82,6 @@ export const SESSION_ICON_ATTRIBUTE = 'data-dsh-worktree-icon'
 export const SIDEBAR_SELECTOR = '[data-slot="sidebar"]'
 export const COMPOSER_SEAT_SELECTOR = '[data-composer-seat]'
 export const HERO_PRESET_SLOT_SELECTOR = '[data-slot="conversation.hero.agentPreset"]'
+/** rc.2/alpha 共用的稳定模式按钮定位（alpha 已移除 hero preset slot）。 */
+export const COMPOSER_MODE_BUTTON_SELECTOR = '[data-composer-card="true"] button[aria-label*="访问模式"], [data-composer-card="true"] button[aria-label*="Access mode"]'
 export const MODE_ANCHOR_ATTRIBUTE = 'data-dsh-tauri-worktree-mode-anchor'

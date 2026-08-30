@@ -67,6 +67,9 @@
     "smol-toml": "catalog:utils",
     "yaml": "catalog:testing"
   },
+  "devDependencies": {
+    "@dsh-tauri/client-lib": "workspace:*"
+  },
   "publishConfig": {
     "exports": {
       ".": "./dist/index.js",

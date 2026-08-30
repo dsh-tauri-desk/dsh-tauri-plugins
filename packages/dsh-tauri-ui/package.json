@@ -52,6 +52,7 @@
     "typecheck": "tsc"
   },
   "devDependencies": {
+    "@dsh-tauri/client-lib": "workspace:*",
     "happy-dom": "catalog:testing"
   },
   "publishConfig": {
