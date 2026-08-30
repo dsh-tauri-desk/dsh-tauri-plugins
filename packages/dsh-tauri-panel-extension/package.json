@@ -44,6 +44,9 @@
         "@deepseek-ai/dsh-client-ui-primitives",
         "dsh-tauri"
       ],
+      "external": [
+        "dsh-tauri/client"
+      ],
       "platform": "web"
     },
     "bundle": {
