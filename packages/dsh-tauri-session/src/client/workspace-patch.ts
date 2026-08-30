@@ -9,7 +9,7 @@ import type { Root } from 'react-dom/client'
  *      按行标题与运行时快照唯一匹配记录该行的工作区 id；
  *   2. 扫描 document.body 的 portal 菜单：保留官方「删除工作区」条目原样
  *      （官方 Modal 确认，非破坏性：文件夹与会话记录保留，会话归入未分组），
- *      在其后追加「归档工作区」条目，点击 → 客户端样式确认框 → 归档该组全部会话。
+ *      在其前插入「归档工作区」条目（删除条目保持最底），点击 → 客户端样式确认框 → 归档该组全部会话。
  *
  * 归档目标与会话清单全部来自运行时快照（workspace.sessionIds），不依赖
  * 「组容器里装得下会话行」的 DOM 启发式——官方浏览器在组折叠时不渲染会话行，
@@ -90,6 +90,26 @@ export function workspaceFromRow(row: Element, workspacesRuntime: WorkspacesRunt
       && node.textContent?.trim() === title)
   })
   return matches.length === 1 ? matches[0] : null
+}
+
+/**
+ * 解析工作区归档清单：只统计官方浏览器会展示的真实会话。
+ * subagent 会话、空白占位会话和运行时缺失摘要的 id 不显示在工作区组中，
+ * 因而不应计入「归档 N 个会话」的 N（#235）。
+ */
+export function collectWorkspaceSessionIds(
+  workspace: WorkspaceViewLike,
+  workspacesRuntime: WorkspacesRuntimeLike,
+  sessionsRuntime: SessionsRuntimeLike,
+): string[] {
+  const archived = new Set(workspacesRuntime.list.getSnapshot().archivedSessionIds ?? [])
+  const byId = sessionsRuntime.list.getSnapshot().byId
+  return workspace.sessionIds.filter((id) => {
+    if (archived.has(id))
+      return false
+    const session = byId[id]
+    return session !== undefined && session.blank !== true && session.origin !== 'subagent'
+  })
 }
 
 /**
@@ -231,9 +251,9 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
       const workspace = pendingWorkspace
       let sessionIds: string[] | undefined
       if (workspace) {
-        // 运行时快照与会话归属即权威：折叠/空工作区也能正确定位。
-        const archived = new Set(workspacesRuntime.list.getSnapshot().archivedSessionIds ?? [])
-        sessionIds = workspace.sessionIds.filter(id => !archived.has(id))
+        // 运行时快照与会话归属即权威：折叠/空工作区也能正确定位；计数与
+        // 官方行可见性一致，排除 subagent、空白占位和缺失摘要的会话。
+        sessionIds = collectWorkspaceSessionIds(workspace, workspacesRuntime, sessionsRuntime)
       }
       else if (pendingGroup) {
         sessionIds = collectSessionIds(pendingGroup, sessionsRuntime)
@@ -247,7 +267,8 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
       document.dispatchEvent(new PointerCtor('pointerdown', { bubbles: true, cancelable: true }))
     }
     archiveItem.addEventListener('click', onClick, { capture: true })
-    item.insertAdjacentElement('afterend', archiveItem)
+    // 归档条目插在删除条目之前，官方「删除工作区」保持菜单最底（#235 菜单顺序回归）。
+    item.before(archiveItem)
     itemCleanups.push({
       element: archiveItem,
       cleanup: () => {

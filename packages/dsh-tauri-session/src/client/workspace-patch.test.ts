@@ -1,7 +1,7 @@
-import type { WorkspacesRuntimeLike, WorkspaceViewLike } from './types'
+import type { SessionsRuntimeLike, WorkspacesRuntimeLike, WorkspaceViewLike } from './types'
 import { describe, expect, it, vi } from 'vitest'
 
-import { workspaceFromRow } from './workspace-patch'
+import { collectWorkspaceSessionIds, workspaceFromRow } from './workspace-patch'
 
 // workspace-patch 顶层依赖宿主模块（dsh-tauri/client 为 ModuleLoader 包裹产物、
 // primitives 引用 CSS module），单测只关心 workspaceFromRow 的纯匹配逻辑，mock 掉。
@@ -23,9 +23,14 @@ vi.mock('dsh-tauri/client', () => ({
     }
   },
 }))
+const modalProps = vi.hoisted(() => [] as unknown[])
+
 vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Button: () => null,
-  Modal: () => null,
+  Modal: (props: unknown) => {
+    modalProps.push(props)
+    return null
+  },
 }))
 
 /** 构造一个工作区项目行（role=treeitem + 标题 span，可带 aria-label/title）。 */
@@ -54,6 +59,111 @@ function workspacesRuntime(items: WorkspaceViewLike[]): WorkspacesRuntimeLike {
     },
   } as unknown as WorkspacesRuntimeLike
 }
+
+function sessionsRuntime(snapshot: { ids: string[], byId: Record<string, { id: string, blank?: boolean, origin?: string }> }): SessionsRuntimeLike {
+  return {
+    list: {
+      subscribe: () => () => {},
+      getSnapshot: () => snapshot,
+    },
+  }
+}
+
+describe('collectWorkspaceSessionIds', () => {
+  it('excludes archived, subagent, blank, and missing sessions', () => {
+    const workspace: WorkspaceViewLike = {
+      workspaceId: 'w1',
+      title: 'Minecraft',
+      path: 'C:/minecraft',
+      sessionIds: ['visible', 'subagent', 'blank', 'archived', 'missing'],
+    }
+    const sessions = sessionsRuntime({
+      ids: ['visible', 'subagent', 'blank', 'archived'],
+      byId: {
+        visible: { id: 'visible' },
+        subagent: { id: 'subagent', origin: 'subagent' },
+        blank: { id: 'blank', blank: true },
+        archived: { id: 'archived' },
+      },
+    })
+    const workspaces = {
+      list: {
+        subscribe: () => () => {},
+        getSnapshot: () => ({ items: [workspace], archivedSessionIds: ['archived'] }),
+      },
+    } satisfies WorkspacesRuntimeLike
+
+    expect(collectWorkspaceSessionIds(workspace, workspaces, sessions)).toEqual(['visible'])
+  })
+})
+
+describe('workspace archive menu patch', () => {
+  it('inserts archive before delete and uses the filtered visible count', async () => {
+    document.body.innerHTML = ''
+    modalProps.length = 0
+
+    const workspace: WorkspaceViewLike = {
+      workspaceId: 'w1',
+      title: 'Minecraft',
+      path: 'C:/minecraft',
+      sessionIds: ['visible', 'subagent'],
+    }
+    const sessions = sessionsRuntime({
+      ids: ['visible', 'subagent'],
+      byId: {
+        visible: { id: 'visible' },
+        subagent: { id: 'subagent', origin: 'subagent' },
+      },
+    })
+    const workspaces = workspacesRuntime([workspace])
+
+    const sidebar = document.createElement('div')
+    sidebar.dataset.slot = 'sidebar'
+    const row = document.createElement('div')
+    row.setAttribute('role', 'treeitem')
+    row.setAttribute('aria-expanded', 'false')
+    const ellipsis = document.createElement('button')
+    row.append(ellipsis)
+    const title = document.createElement('span')
+    title.textContent = 'Minecraft'
+    row.append(title)
+    sidebar.append(row)
+
+    const menu = document.createElement('div')
+    menu.setAttribute('role', 'menu')
+    const itemWrap = document.createElement('div')
+    itemWrap.className = 'primitives-itemWrap'
+    const deleteItem = document.createElement('button')
+    deleteItem.setAttribute('role', 'menuitem')
+    const deleteLabel = document.createElement('span')
+    deleteLabel.className = 'itemLabel'
+    deleteLabel.textContent = '删除工作区'
+    deleteItem.append(deleteLabel)
+    itemWrap.append(deleteItem)
+    menu.append(itemWrap)
+    document.body.append(sidebar, menu)
+
+    const { installWorkspaceArchivePatch } = await import('./workspace-patch')
+    const dispose = installWorkspaceArchivePatch(workspaces, sessions)
+    try {
+      const items = menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]')
+      expect(items).toHaveLength(2)
+      expect(items[1]).toBe(deleteItem)
+      expect(items[0].textContent?.trim()).toBe('Archive workspace')
+
+      ellipsis.click()
+      items[0].click()
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      expect(modalProps).toHaveLength(1)
+      expect(modalProps[0]).toMatchObject({ title: 'Archive 1 sessions?' })
+    }
+    finally {
+      dispose()
+      document.body.innerHTML = ''
+    }
+  })
+})
 
 describe('workspaceFromRow', () => {
   const minecraft = { workspaceId: 'w1', title: 'Minecraft', path: 'C:/minecraft', sessionIds: ['session-1'] }
