@@ -81,7 +81,7 @@ export function sendJson(response: ServerResponse, status: number, payload: unkn
   response.end(status === 204 ? undefined : JSON.stringify(payload))
 }
 
-export function routeHandler(fn: RouteFunction, { mutate = false }: { mutate?: boolean } = {}): RouteHandler {
+export function routeHandler(fn: RouteFunction, { mutate = false, readBody = mutate }: { mutate?: boolean, readBody?: boolean } = {}): RouteHandler {
   const allowedMethod = mutate ? 'POST' : 'GET'
   return async (request, response) => {
     if (request.method === 'OPTIONS') {
@@ -97,7 +97,7 @@ export function routeHandler(fn: RouteFunction, { mutate = false }: { mutate?: b
       return
     }
     try {
-      const [code, payload] = await fn(mutate ? await readJsonBody(request) : {}, request)
+      const [code, payload] = await fn(readBody ? await readJsonBody(request) : {}, request)
       sendJson(response, code, payload)
     }
     catch (error) {

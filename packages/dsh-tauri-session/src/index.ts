@@ -410,7 +410,7 @@ const permanentDeletionUnavailable = routeHandler(
   async () => [503, {
     error: '当前 DSH 尚无可安全协调会话写入器的删除 API；永久删除已暂时禁用，请保留归档或取消归档。',
   }],
-  { mutate: true },
+  { mutate: true, readBody: false },
 )
 
 /** 构建路由列表。 */

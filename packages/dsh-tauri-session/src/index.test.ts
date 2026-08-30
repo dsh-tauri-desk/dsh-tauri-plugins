@@ -199,6 +199,22 @@ describe('session routes', () => {
     }
   })
 
+  it('/delete returns 503 without waiting for a request body', async () => {
+    const ctx = { connection: allowConnection, workspaceRegistry: {}, sessions: {} }
+    const route = buildRoutes(ctx, '').find(candidate => candidate.path === '/api/dsh-session/delete')!
+    const res = fakeRes()
+    const req: any = {
+      method: 'POST',
+      socket: { remoteAddress: '127.0.0.1' },
+      on: vi.fn(() => req),
+    }
+
+    await route.handler(req, res)
+
+    expect(res.code).toBe(503)
+    expect(req.on).not.toHaveBeenCalled()
+  })
+
   it('/archive remains available', async () => {
     const archivedSessionIds: string[] = []
     const archiveSession = vi.fn(async (sessionId: string) => {
