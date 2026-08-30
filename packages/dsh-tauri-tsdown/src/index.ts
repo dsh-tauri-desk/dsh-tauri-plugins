@@ -9,9 +9,17 @@ function clientBundleRegistration(): Pick<UserConfig, 'banner' | 'footer'> {
     ? { name: packageName }
     : JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { name: string }
   const id = JSON.stringify(pkg.name)
+  // Only the JS bundle is a runtime script wrapped in the ModuleLoader factory.
+  // Declaration files must stay real ES modules (top-level import/export) —
+  // wrapping them breaks types ("file is not a module") — so apply the wrapper
+  // exclusively to JS outputs via the `{ js }` addon form.
   return {
-    banner: `window.__ModuleLoader__.load({id:${id},factory:(require)=>{const loaderRequire=require;const resolve=(specifier)=>specifier.endsWith('/client')?specifier.slice(0,-7):specifier;require=(specifier)=>loaderRequire(resolve(specifier));var module={exports:{}};var exports=module.exports;`,
-    footer: 'return module.exports;}});',
+    banner: {
+      js: `window.__ModuleLoader__.load({id:${id},factory:(require)=>{const loaderRequire=require;const resolve=(specifier)=>specifier.endsWith('/client')?specifier.slice(0,-7):specifier;require=(specifier)=>loaderRequire(resolve(specifier));var module={exports:{}};var exports=module.exports;`,
+    },
+    footer: {
+      js: 'return module.exports;}});',
+    },
   }
 }
 
@@ -20,6 +28,8 @@ export const dshExternal = [
   'react/jsx-runtime',
   'react-dom',
   'react-dom/client',
+  'dsh-tauri',
+  'dsh-tauri/client',
   /^@deepseek-ai\//,
 ]
 
@@ -48,17 +58,20 @@ export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
     },
     {
       ...common,
-      ...options.client,
       entry: { client: 'src/client/index.ts' },
       // Client bundles are classic scripts consumed by dsh-client-modules.
       // CJS output is required so its exports remain inside the loader factory.
       format: 'cjs',
+      // CJS must not use `.js` in a `"type": "module"` package — publint would
+      // flag the ESM/CJS mismatch. Emit `.cjs` (types stay `client.d.ts`).
+      outExtensions: () => ({ js: '.cjs' }),
       define: { 'process.env.NODE_ENV': JSON.stringify('production') },
       ...clientBundleRegistration(),
       dts: false,
       sourcemap: true,
-      minify: true,
+      // minify: true,
       clean: false,
+      ...options.client,
     },
   ]
 }

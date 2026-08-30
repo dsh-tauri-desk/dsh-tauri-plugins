@@ -21,7 +21,10 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.js",
-    "./client": "./dist/client.js",
+    "./client": {
+      "types": "./dist/client.d.cts",
+      "default": "./dist/client.cjs"
+    },
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -53,13 +56,7 @@
     "typecheck": "tsc"
   },
   "devDependencies": {
-    "@dsh-tauri/client-lib": "workspace:*"
-  },
-  "publishConfig": {
-    "exports": {
-      ".": "./dist/index.js",
-      "./client": "./dist/client.js",
-      "./package.json": "./package.json"
-    }
+    "css-render": "catalog:ui",
+    "happy-dom": "catalog:testing"
   }
 }

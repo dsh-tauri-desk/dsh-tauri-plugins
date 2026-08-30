@@ -1,0 +1,115 @@
+import type { ClientContext } from './types'
+
+type RuntimeObject = Record<string, unknown>
+
+/** Adapt alpha's nested list/navigation services to the rc.2 plugin contract. */
+export function compat(ctx: ClientContext): ClientContext {
+  const anyCtx = ctx as unknown as { get?: (n: string) => unknown } & RuntimeObject
+
+  // Inline Lookup Helper: 优先使用安全查找 ctx.get(name)
+  const safeLookup = (name: string): unknown => typeof anyCtx.get === 'function' ? anyCtx.get(name) : anyCtx[name]
+
+  // Inline Alpha Detection: 判断当前环境是否为 Alpha 版本
+  const alphaSessions = safeLookup('sessions') as RuntimeObject | undefined
+  const isAlpha
+    = (alphaSessions?.list !== undefined && typeof alphaSessions.getSnapshot !== 'function')
+      || safeLookup('uiWorkspace') !== undefined
+
+  if (!isAlpha)
+    return ctx
+
+  // 补全当前环境的对象引用
+  const rawSessions = (alphaSessions ?? {}) as RuntimeObject
+  const rawWorkspaces = (safeLookup('workspaces') ?? {}) as RuntimeObject
+  const uiWorkspace = safeLookup('uiWorkspace') as RuntimeObject | undefined
+  const uiSession = safeLookup('uiSession') as RuntimeObject | undefined
+
+  // Inline Auto-Bind Proxy: 为 snapshot 绑定 Proxy 实例
+  const createBoundProxy = (target: unknown): RuntimeObject | undefined => {
+    if (!target || (typeof target !== 'object' && typeof target !== 'function'))
+      return undefined
+    return new Proxy(target as object, {
+      get(t, p, r) {
+        const member = Reflect.get(t, p, r)
+        return typeof member === 'function' ? member.bind(t) : member
+      },
+    }) as RuntimeObject
+  }
+
+  const list = createBoundProxy(rawSessions.list)
+  const workspaceList = createBoundProxy(rawWorkspaces.list)
+
+  // 映射 sessions 适配层
+  const sessions = new Proxy(rawSessions as object, {
+    get(target, prop, receiver) {
+      if (prop === 'list')
+        return list
+      if (prop === 'getSnapshot')
+        return () => (list?.getSnapshot as (() => unknown) | undefined)?.()
+      if (prop === 'subscribe')
+        return (l: () => void) => (list?.subscribe as ((cb: () => void) => unknown) | undefined)?.(l)
+      if (prop === 'provideInfo')
+        return (id: string) => provideInfo(rawSessions, id, uiSession)
+      const member = Reflect.get(target, prop, receiver)
+      return typeof member === 'function' ? member.bind(target) : member
+    },
+  }) as unknown as RuntimeObject
+
+  // 映射 workspaces 适配层
+  const workspaces = new Proxy(rawWorkspaces as object, {
+    get(target, prop, receiver) {
+      if (prop === 'list')
+        return workspaceList
+      if (prop === 'startSession') {
+        const fn = uiWorkspace?.startSession
+        return typeof fn === 'function' ? (id?: string) => fn.call(uiWorkspace, id) : undefined
+      }
+      if (prop === 'connectWorkspace') {
+        const fn = uiWorkspace?.connectWorkspace
+        return typeof fn === 'function' ? (id: string) => fn.call(uiWorkspace, id) : undefined
+      }
+
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as unknown as RuntimeObject
+
+  // 返回最终的上下文代理对象
+  return new Proxy(ctx, {
+    get(target, prop, receiver) {
+      if (prop === 'sessions')
+        return sessions
+      if (prop === 'workspaces')
+        return workspaces
+      return Reflect.get(target, prop, receiver)
+    },
+  })
+}
+
+/**
+ * Alpha deliberately does not expose the old per-session info lookup. Try
+ * documented scope/provide implementations when a shell supplies one, but
+ * never make a plugin fail merely because that optional bridge is absent.
+ */
+function provideInfo(sessions: RuntimeObject, id: string, uiSession: RuntimeObject | undefined): unknown {
+  const bindingFn = sessions.binding
+  const binding = typeof bindingFn === 'function' ? bindingFn.call(sessions, id) : undefined
+  if (!binding)
+    return undefined
+
+  const adapter = uiSession?.adapter as RuntimeObject | undefined
+  const resolveFn = adapter?.resolve
+
+  if (typeof resolveFn === 'function') {
+    try {
+      const projected = resolveFn.call(adapter, id) as RuntimeObject | undefined
+      const inputActions = (projected?.props as RuntimeObject | undefined)?.inputActions
+      if (inputActions !== undefined) {
+        return { props: { inputActions } }
+      }
+    }
+    catch {
+      // The binding can disappear while a newly-created session is materialized.
+    }
+  }
+  return undefined
+}

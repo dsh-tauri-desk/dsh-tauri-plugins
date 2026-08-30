@@ -1,3 +1,7 @@
 import { defineDshConfig } from 'dsh-tauri-tsdown'
 
-export default defineDshConfig()
+export default defineDshConfig({
+  client: {
+    dts: true,
+  },
+})

@@ -11,10 +11,3 @@ export interface Page {
 
 /** 记录动作（与宿主 `PluginError.action` 语义一致）。 */
 export type ErrorAction = 'runtime' | 'install' | 'update' | 'remove'
-
-declare global {
-  interface Window {
-    /** 插件接管标记：桌面端 NAV_SHIM_JS 检测到后停止收发，避免双重执行。 */
-    __dsh_tauri_bridge__?: boolean
-  }
-}
