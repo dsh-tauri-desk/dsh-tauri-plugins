@@ -1,3 +1,6 @@
 [submodule "soruce/dsh-plugin-capabilities"]
 	path = soruce/dsh-plugin-capabilities
 	url = https://github.com/qinyre/dsh-plugin-capabilities
+[submodule "packages/dsh-tauri-desktop"]
+	path = packages/dsh-tauri-desktop
+	url = https://github.com/dsh-tauri-desk/deepseek-harness-desktop.git

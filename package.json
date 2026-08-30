@@ -24,13 +24,17 @@
     "deepseek-harness"
   ],
   "scripts": {
+    "postinstall": "tsx scripts/setup-desktop.ts",
     "build": "pnpm -r run build",
     "dev": "pnpm -r --parallel run dev",
+    "dev:desktop": "tsx scripts/dev-desktop.ts",
+    "dev:plugins": "pnpm --filter \"./packages/*\" --filter !deepseek-harness-desktop -r --parallel run dev",
+    "setup:desktop": "tsx scripts/setup-desktop.ts",
     "lint": "eslint .",
     "release": "bumpp -r",
     "test": "vitest",
-    "typecheck": "pnpm -r run typecheck",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "typecheck": "pnpm -r run typecheck"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:cli",

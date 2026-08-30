@@ -25,6 +25,7 @@
 
 pnpm install
 pnpm dev
+pnpm dev:desktop
 pnpm build
 pnpm test
 pnpm typecheck
