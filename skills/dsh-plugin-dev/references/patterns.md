@@ -192,7 +192,7 @@ export function apply(ctx) {
   },
   "exports": {
     ".": "./dist/index.js",
-    "./client": "./dist/client.js"
+    "./client": "./dist/client.cjs"
   }
 }
 ```

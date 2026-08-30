@@ -38,7 +38,7 @@
 
 - 全仓库 `"type": "module"`。
 - 宿主半区入口是包根（`dist/index.js`）；客户端半区经 `./client` 导出
-  （`dist/client.js`）。
+  （`dist/client.cjs`）。
 - `dsh.client.inject` 列出客户端半区运行时依赖供打包。
 - `dsh.client.platform` 为 `"web"`。
 - `dsh.bundle.patch` 指向 profile 补丁文件。
@@ -59,7 +59,7 @@ profile 加载器的最小插入行：
 
 ## 构建流水线（tsdown）
 
-- `tsdown` 构建两个半区：`dist/index.js`（ESM 宿主）与 `dist/client.js`
+- `tsdown` 构建两个半区：`dist/index.js`（ESM 宿主）与 `dist/client.cjs`
   （CJS 浏览器包，`window.__ModuleLoader__.load({id, factory})`）。
 - `dev` 运行 `tsdown --watch`。
 - 桌面 debug 构建从资源目录链接插件源码（无 node_modules）；宿主半区经平台

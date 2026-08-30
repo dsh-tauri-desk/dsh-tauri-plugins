@@ -45,7 +45,7 @@
     "@types/react": "catalog:types",
     "@types/react-dom": "catalog:types",
     "bumpp": "catalog:cli",
-    "css-render": "catalog:ui",
+    "dsh-tauri": "workspace:*",
     "dsh-tauri-tsdown": "workspace:*",
     "eslint": "catalog:cli",
     "lint-staged": "catalog:cli",

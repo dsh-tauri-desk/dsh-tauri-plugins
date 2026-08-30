@@ -146,9 +146,9 @@ importers:
       bumpp:
         specifier: catalog:cli
         version: 10.3.2
-      css-render:
-        specifier: catalog:ui
-        version: 0.15.14
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:packages/dsh-tauri
       dsh-tauri-tsdown:
         specifier: workspace:*
         version: link:packages/dsh-tauri-tsdown
@@ -197,33 +197,14 @@ importers:
 
   packages/dsh-tauri:
     devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
-
-  packages/dsh-tauri-lib:
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: catalog:dsh
-        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
-      '@deepseek-ai/dsh-client-runtime':
-        specifier: catalog:dsh
-        version: 0.1.1-rc.2(c30c11caf28a5634279e6e808a6e5391)
-      '@deepseek-ai/dsh-client-ui-layout':
-        specifier: catalog:dsh
-        version: 0.1.1-rc.2(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-runtime@0.1.1-rc.2(c30c11caf28a5634279e6e808a6e5391))(@deepseek-ai/dsh-client-ui-theme@0.1.0-rc.8(9a4b92a5173a4fc0ceb77b754954f27d))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))
-      typescript:
-        specifier: catalog:cli
-        version: 5.9.3
-
-  packages/dsh-tauri-panel:
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
+      css-render:
+        specifier: catalog:ui
+        version: 0.15.14
       happy-dom:
         specifier: catalog:testing
         version: 20.11.8
+
+  packages/dsh-tauri-panel: {}
 
   packages/dsh-tauri-panel-extension:
     dependencies:
@@ -245,28 +226,12 @@ importers:
       yaml:
         specifier: catalog:testing
         version: 2.8.2
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
 
-  packages/dsh-tauri-panel-placeholder:
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
+  packages/dsh-tauri-panel-placeholder: {}
 
-  packages/dsh-tauri-rightclick:
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
+  packages/dsh-tauri-rightclick: {}
 
-  packages/dsh-tauri-session:
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
+  packages/dsh-tauri-session: {}
 
   packages/dsh-tauri-tsdown:
     devDependencies:
@@ -277,20 +242,9 @@ importers:
         specifier: catalog:cli
         version: 5.9.3
 
-  packages/dsh-tauri-ui:
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
-      happy-dom:
-        specifier: catalog:testing
-        version: 20.11.8
+  packages/dsh-tauri-ui: {}
 
-  packages/dsh-tauri-worktree:
-    devDependencies:
-      '@dsh-tauri/client-lib':
-        specifier: workspace:*
-        version: link:../dsh-tauri-lib
+  packages/dsh-tauri-worktree: {}
 
 packages:
 
