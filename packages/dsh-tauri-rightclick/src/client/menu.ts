@@ -5,12 +5,12 @@
  * 会话与工作区的官方操作全部转交官方组件（officialSelect）；插件只补充
  * 宿主能力（资源管理器、剪贴板、默认浏览器、刷新）。
  */
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import type { ClientContext } from 'dsh-tauri/client'
 import type {
   SessionsRuntimeLike,
   WorkspacesRuntimeLike,
 } from './types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import { compat } from 'dsh-tauri/client'
 import {
   archiveSession,
   archiveUngroupedSessions,
@@ -53,7 +53,7 @@ function officialWorkspaceSelect(row: Element, labels: RegExp[], failureMessage:
  * @param ctx - 客户端根上下文（须已注入 sessions/workspaces）。
  */
 export function installContextMenu(ctx: ClientContext): () => void {
-  const cx = compatCtx(ctx)
+  const cx = compat(ctx)
   const sessions = cx.sessions as unknown as SessionsRuntimeLike
   const workspaces = cx.workspaces as unknown as WorkspacesRuntimeLike
   const extensionsRegistry = registry()

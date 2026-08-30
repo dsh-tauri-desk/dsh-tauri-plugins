@@ -13,7 +13,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
  *
  * 无业务逻辑：样板只演示协议接入点与「会话区替换」的最小形态。
  */
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import type { ClientContext } from 'dsh-tauri/client'
 import { PLUGIN_ID } from './constants'
 import { installPanelLocale } from './locale'
 import { installPanel } from './panel'

@@ -8,7 +8,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { LocaleKey } from './types'
-import { createSnapshotStore } from '@dsh-tauri/client-lib'
+import { createExternalStore } from 'dsh-tauri/client'
 import { useSyncExternalStore } from 'react'
 import { WORKTREE_LOCALE_NAMESPACE as NS } from './constants'
 
@@ -83,7 +83,7 @@ const DICT_EN: Record<LocaleKey, string> = {
 let activeLocale = 'en'
 
 /** locale 变更推进器：revision 前进 -> uSES 订阅方重渲染。 */
-export const localeRev = createSnapshotStore({ rev: 0 })
+export const localeRev = createExternalStore({ rev: 0 })
 
 /**
  * 在 apply 里安装：注册本插件的双语字典，并桥接 locale 变更到 rev。
@@ -95,9 +95,7 @@ export function installLocale(ctx: Context): void {
   ctx.locale.register(NS, 'en', DICT_EN)
   ctx.locale.subscribe(() => {
     activeLocale = ctx.locale.getLocale().active
-    localeRev.update((state) => {
-      state.rev += 1
-    })
+    localeRev.set(state => ({ ...state, rev: state.rev + 1 }))
   })
 }
 

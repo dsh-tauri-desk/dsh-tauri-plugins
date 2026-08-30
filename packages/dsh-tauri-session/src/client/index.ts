@@ -12,8 +12,8 @@
  * 与 node half（src/index.ts）经 /api/dsh-session/* 通信（archived/archive/
  * archive-workspace/unarchive/clear）。
  */
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import type { ClientContext } from 'dsh-tauri/client'
+import { compat } from 'dsh-tauri/client'
 import {
   SESSION_ARCHIVE_PATCH_EFFECT,
   SESSION_ARCHIVE_SECTION_EFFECT,
@@ -39,7 +39,7 @@ export const inject = ['slots', 'locale', 'sessions', 'workspaces']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  const cx = compatCtx(ctx)
+  const cx = compat(ctx)
   installLocale(cx)
 
   ctx.effect(() => mountSessionStyles(), SESSION_STYLES_EFFECT)

@@ -1,7 +1,7 @@
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import type { ClientContext } from 'dsh-tauri/client'
 import type { ReactElement } from 'react'
 import type { ConversationInputLeftProps, ExtensionRuntimeContext, McpInjected, PanelProtocol, SkillsInjected, Translate } from './types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import { compat } from 'dsh-tauri/client'
 import { useEffect, useId, useRef, useState } from 'react'
 import { CONVERSATION_INPUT_LEFT_SLOT, INPUT_PREFILL_ID, INPUT_PREFILL_ORDER, INPUT_PREFILL_PRIORITY, LOCALE_NAMESPACE, PANEL_ACTION_ID, PANEL_ACTION_ORDER, PANEL_ACTION_PRIORITY, PANEL_ID, PANEL_PROTOCOL_NAME, PANEL_SLOT_NAME, PLUGIN_ID, SKILL_CREATOR_DRAFT } from './constants'
 import { IconExtension } from './icons'
@@ -104,7 +104,7 @@ export function installExtensionPanel(ctx: ClientContext, t: Translate, skills: 
       const protocol = ctx.reflect.get(PANEL_PROTOCOL_NAME) as PanelProtocol | undefined
       if (!protocol)
         return
-      const runtime = compatCtx(ctx) as unknown as ExtensionRuntimeContext
+      const runtime = compat(ctx) as unknown as ExtensionRuntimeContext
       const createSkill = async (): Promise<void> => {
         const id = chooseWorkspace(runtime)
         if (id === undefined)

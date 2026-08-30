@@ -23,7 +23,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./dist/index.js",
-    "./client": "./dist/client.js",
+    "./client": "./dist/client.cjs",
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -38,7 +38,8 @@
     "client": {
       "inject": [
         "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-layout"
+        "@deepseek-ai/dsh-client-ui-layout",
+        "dsh-tauri"
       ],
       "platform": "web"
     },
@@ -54,14 +55,5 @@
     "test": "vitest",
     "typecheck": "tsc"
   },
-  "devDependencies": {
-    "@dsh-tauri/client-lib": "workspace:*"
-  },
-  "publishConfig": {
-    "exports": {
-      ".": "./dist/index.js",
-      "./client": "./dist/client.js",
-      "./package.json": "./package.json"
-    }
-  }
+  "devDependencies": {}
 }

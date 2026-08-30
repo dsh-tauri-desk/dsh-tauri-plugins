@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
 import type { PanelActionItemProps, PanelContentSpec, PanelProtocol } from './types'
-import { createSnapshotStore } from '@dsh-tauri/client-lib'
+import { createExternalStore } from 'dsh-tauri/client'
 import { useSyncExternalStore } from 'react'
 import { PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, PANEL_PROTOCOL_SERVICE, PANEL_VIEW_COMPONENT_ID, PANEL_VIEW_SLOT, SIDEBAR_INTERACTIVE_SELECTOR, SIDEBAR_KEEP_OPEN_SELECTOR, WORKSPACE_GROUP_SELECTOR } from './constants'
 import { NS } from './locale'
@@ -40,7 +40,7 @@ let conversationSeat: (() => void) | undefined
 /** 当前替换视图规格。 */
 let currentSpec: PanelContentSpec | undefined
 /** 替换状态（ActionItem active 样式订阅源）。 */
-const panelViewStore = createSnapshotStore<{ id: string } | null>(null)
+const panelViewStore = createExternalStore<{ id: string } | null>(null)
 /** 根上下文（renderPanelContent 内部注册用）。 */
 let rootCtx: Context | undefined
 

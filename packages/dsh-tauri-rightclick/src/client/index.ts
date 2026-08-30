@@ -12,8 +12,8 @@
  *
  * 与 node half（src/index.ts）经 /api/dsh-rightclick-menu/* 通信（open-url）。
  */
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import type { ClientContext } from 'dsh-tauri/client'
+import { compat } from 'dsh-tauri/client'
 import {
   RIGHTCLICK_CLIENT_PLUGIN,
   RIGHTCLICK_MENU_EFFECT,
@@ -34,7 +34,7 @@ export const inject = ['locale', 'sessions', 'workspaces']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  const cx = compatCtx(ctx)
+  const cx = compat(ctx)
   installLocale(cx)
 
   ctx.effect(() => mountRightClickStyles(), RIGHTCLICK_STYLES_EFFECT)

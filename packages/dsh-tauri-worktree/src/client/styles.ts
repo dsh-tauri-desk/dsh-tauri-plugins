@@ -1,4 +1,4 @@
-import { CssRender } from 'css-render'
+import { CssRender } from 'dsh-tauri/client'
 import { WORKTREE_STYLE_ID, worktreeStyles } from './constants'
 
 export { worktreeStyles } from './constants'

@@ -11,7 +11,7 @@
  * session id（只读，不移动 React 管理的节点），再读 store 判断是否处于工作树模式。
  */
 import type { WorkspaceSessionOrder } from './types'
-import { CssRender } from 'css-render'
+import { CssRender } from 'dsh-tauri/client'
 import {
   SESSION_ICON_ATTRIBUTE,
   SESSION_ICON_STYLE_ID,

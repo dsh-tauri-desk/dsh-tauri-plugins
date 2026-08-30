@@ -127,9 +127,7 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
           placeholder={settingsText('search')}
           aria-label={settingsText('search')}
           onChange={event =>
-            settingsStore.update((state) => {
-              state.query = event.target.value
-            })}
+            settingsStore.set(state => ({ ...state, query: event.target.value }))}
         />
         <nav className="dsh-tu-settingsNav" aria-label={settingsText('settings')}>
           {visible.map(row => (

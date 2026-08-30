@@ -1,5 +1,5 @@
 /** CSS generated as css-render nodes so every declaration remains structured. */
-import { CssRender } from 'css-render'
+import { CssRender } from 'dsh-tauri/client'
 import { PANEL_DATA_ATTRIBUTES, PANEL_STYLE_ID } from './constants'
 
 const cssr = CssRender()

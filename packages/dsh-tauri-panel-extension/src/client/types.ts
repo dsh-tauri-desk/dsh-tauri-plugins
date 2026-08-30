@@ -1,4 +1,4 @@
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import type { ClientContext } from 'dsh-tauri/client'
 import type { ComponentType, ReactElement, ReactNode } from 'react'
 
 export interface IconProps {

@@ -4,8 +4,8 @@ import { shouldClosePanelForSidebarTarget } from '../src/client/service'
 
 // dsh-client-runtime 的 client 构造为浏览器专用 bundle（window.__ModuleLoader__），
 // 测试环境无法加载，这里与 index.test.ts 一致地对它取替身。
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => ({
-  createSnapshotStore: () => ({
+vi.mock('dsh-tauri/client', () => ({
+  createExternalStore: () => ({
     getSnapshot: () => null,
     set: () => undefined,
     subscribe: () => () => undefined,

@@ -1,5 +1,5 @@
 /** Placeholder styles generated as structured css-render nodes. */
-import { CssRender } from 'css-render'
+import { CssRender } from 'dsh-tauri/client'
 import { PLACEHOLDER_CENTER_CLASS, PLACEHOLDER_TEXT_CLASS, STYLE_ID } from './constants'
 
 const cssr = CssRender()

@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
 import type { WorkspacesRuntime, WorktreeDialogProps } from './types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import { compat } from 'dsh-tauri/client'
 /**
  * dialog.tsx — 检出本地 / 放弃更改 两个模态框（shell.overlay 条目）。
  *
@@ -250,7 +250,7 @@ function AbandonDialog(props: {
  * @param ctx - 客户端根上下文。
  */
 export function registerDialog(ctx: Context): void {
-  const cx = compatCtx(ctx as import('@dsh-tauri/client-lib/types').ClientContext)
+  const cx = compat(ctx as import('dsh-tauri/client').ClientContext)
   // shell.overlay 由 ui-layout 的 AppFrame 声明；alpha 要求注册进入前该槽已由
   // 父条目 children 表声明，故用 inject 等其声明 live 后再注册。
   ctx.effect(

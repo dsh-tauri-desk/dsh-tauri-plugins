@@ -2,8 +2,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ReactElement } from 'react'
 import type { InputActions, ModeSelectProps, SessionsRuntime } from './types'
 import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
-import { CssRender } from 'css-render'
+import { compat, CssRender } from 'dsh-tauri/client'
+
 /**
  * select.tsx — 「标准模式」右侧的会话工作模式选择器。
  *
@@ -285,7 +285,7 @@ function WorktreeModeControl({ sessionId, useInput, inputActions, sessionsRuntim
 
 /** 使用 input.dock 的 session 生命周期，并把控件 portal 到标准模式右侧。 */
 export function registerModeSelect(ctx: Context): void {
-  const cx = compatCtx(ctx as import('@dsh-tauri/client-lib/types').ClientContext)
+  const cx = compat(ctx as import('dsh-tauri/client').ClientContext)
   ctx.slots.inject(INPUT_DOCK_SLOT as never, () =>
     ctx.slots.register(
       {

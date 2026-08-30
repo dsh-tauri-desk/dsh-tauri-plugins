@@ -1,4 +1,4 @@
-import type { SessionListState } from '@dsh-tauri/client-lib/types'
+import type { SessionListState } from 'dsh-tauri/client'
 
 /** Selector hook shape shared by standard slot props. */
 export type SelectorHook<T> = <S>(sel: (state: T) => S) => S

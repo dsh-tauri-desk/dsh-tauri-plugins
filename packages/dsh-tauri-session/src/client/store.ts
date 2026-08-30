@@ -10,7 +10,7 @@
  * （ctx.workspaces.manager.refresh）重新拉取归档镜像，否则列表原地不动。
  */
 import type { ArchivedListPayload, ArchiveSort, ArchiveUiState } from './types'
-import { createSnapshotStore } from '@dsh-tauri/client-lib'
+import { createExternalStore } from 'dsh-tauri/client'
 import { useSyncExternalStore } from 'react'
 import { SESSION_API_PREFIX } from './constants'
 import { text } from './locale'
@@ -99,7 +99,7 @@ export function postDeleteWorkspace(sessionIds: readonly string[]): Promise<{ ok
 }
 
 /** 全局唯一共享状态源（模块级单例）。 */
-export const archiveStore = createSnapshotStore<ArchiveUiState>({
+export const archiveStore = createExternalStore<ArchiveUiState>({
   archived: { archivedSessionIds: [], meta: {} },
   sort: 'updatedAt',
   query: '',
@@ -117,41 +117,26 @@ export function useArchiveUi(): ArchiveUiState {
 }
 
 export function setSort(sort: ArchiveSort): void {
-  archiveStore.update((state) => {
-    state.sort = sort
-  })
+  archiveStore.set(state => ({ ...state, sort }))
 }
 
 export function setQuery(query: string): void {
-  archiveStore.update((state) => {
-    state.query = query
-  })
+  archiveStore.set(state => ({ ...state, query }))
 }
 
 export function setWorkspaceFilter(workspaceId: string): void {
-  archiveStore.update((state) => {
-    state.workspaceId = workspaceId
-  })
+  archiveStore.set(state => ({ ...state, workspaceId }))
 }
 
 /** 拉取归档载荷并写入 store。 */
 export async function refreshArchived(): Promise<void> {
-  archiveStore.update((state) => {
-    state.loading = true
-    state.error = ''
-  })
+  archiveStore.set(state => ({ ...state, loading: true, error: '' }))
   try {
     const archived = await fetchArchived()
-    archiveStore.update((state) => {
-      state.archived = archived
-      state.loading = false
-    })
+    archiveStore.set(state => ({ ...state, archived, loading: false }))
   }
   catch (error) {
-    archiveStore.update((state) => {
-      state.loading = false
-      state.error = errMessage(error)
-    })
+    archiveStore.set(state => ({ ...state, loading: false, error: errMessage(error) }))
   }
 }
 
@@ -160,19 +145,14 @@ export async function refreshArchived(): Promise<void> {
  * 刷新归档载荷与工作区归档镜像，失败写入 error。返回是否成功。
  */
 async function runMutation(mutate: () => Promise<unknown>, resync?: () => Promise<void>, sessionIds: readonly string[] = []): Promise<boolean> {
-  archiveStore.update((state) => {
-    state.pending = true
-    state.error = ''
-  })
+  archiveStore.set(state => ({ ...state, pending: true, error: '' }))
   try {
     await mutate()
     if (sessionIds.length > 0) {
-      archiveStore.update((state) => {
-        for (const sessionId of sessionIds) {
-          if (!state.suppressedSessionIds.includes(sessionId))
-            state.suppressedSessionIds.push(sessionId)
-        }
-      })
+      archiveStore.set(state => ({
+        ...state,
+        suppressedSessionIds: [...state.suppressedSessionIds, ...sessionIds.filter(sessionId => !state.suppressedSessionIds.includes(sessionId))],
+      }))
     }
     await Promise.all([
       refreshArchived(),
@@ -181,23 +161,20 @@ async function runMutation(mutate: () => Promise<unknown>, resync?: () => Promis
     return true
   }
   catch (error) {
-    archiveStore.update((state) => {
-      state.error = errMessage(error)
-    })
+    archiveStore.set(state => ({ ...state, error: errMessage(error) }))
     return false
   }
   finally {
-    archiveStore.update((state) => {
-      state.pending = false
-    })
+    archiveStore.set(state => ({ ...state, pending: false }))
   }
 }
 
 /** 归档一个会话并刷新。 */
 export async function archiveSession(sessionId: string, workspaceId?: string, beforeSessionId?: string): Promise<void> {
-  archiveStore.update((state) => {
-    state.suppressedSessionIds = state.suppressedSessionIds.filter(id => id !== sessionId)
-  })
+  archiveStore.set(state => ({
+    ...state,
+    suppressedSessionIds: state.suppressedSessionIds.filter(id => id !== sessionId),
+  }))
   await runMutation(() => postArchive(sessionId, workspaceId, beforeSessionId))
 }
 

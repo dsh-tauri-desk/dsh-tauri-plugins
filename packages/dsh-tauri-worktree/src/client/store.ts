@@ -5,7 +5,7 @@ import type {
   WorktreeStatus,
   WorktreeUiState,
 } from './types'
-import { createSnapshotStore } from '@dsh-tauri/client-lib'
+import { createExternalStore } from 'dsh-tauri/client'
 /**
  * store.ts — dsh-tauri-worktree 的共享客户端状态（per-session 工作树状态 + RPC）。
  *
@@ -68,7 +68,7 @@ const EMPTY_STATE = blankState()
 
 export type { WorktreeCheckout, WorktreeCreate, WorktreeStatus, WorktreeUiState } from './types'
 
-export const worktreeStore = createSnapshotStore<WorktreeUiState>({
+export const worktreeStore = createExternalStore<WorktreeUiState>({
   bySession: {},
 })
 
@@ -83,10 +83,13 @@ export function selectSessionState(state: WorktreeUiState, sessionId: string | u
 export function patchSession(sessionId: string | undefined, patch: Partial<WorktreeSessionState>): void {
   if (!sessionId)
     return
-  worktreeStore.update((state) => {
-    const current = state.bySession[sessionId] ?? blankState()
-    state.bySession[sessionId] = { ...current, ...patch }
-  })
+  worktreeStore.set(state => ({
+    ...state,
+    bySession: {
+      ...state.bySession,
+      [sessionId]: { ...(state.bySession[sessionId] ?? blankState()), ...patch },
+    },
+  }))
 }
 
 /** 组件内订阅某会话的工作树状态（uSES）。 */

@@ -1,5 +1,5 @@
 import type { ExtensionClientContext, McpInjected, McpRow, SkillRowView, SkillsInjected, Translate } from './types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import { compat } from 'dsh-tauri/client'
 import { API_PREFIX, LOCALE_NAMESPACE, PLUGIN_ID } from './constants'
 import { installExtensionPanel, registerSkillCreatorPrefill } from './extension-panel'
 import { installExtensionLocale } from './locale'
@@ -55,7 +55,7 @@ export const name = PLUGIN_ID
 export const inject = ['slots', 'locale', 'sessions', 'workspaces']
 
 export function apply(ctx: ExtensionClientContext): void {
-  const cx = compatCtx(ctx)
+  const cx = compat(ctx)
   installExtensionLocale(ctx)
   ctx.effect(() => mountExtensionStyles(), `${PLUGIN_ID}: styles`)
   const t = ctx.locale.bind(LOCALE_NAMESPACE) as Translate

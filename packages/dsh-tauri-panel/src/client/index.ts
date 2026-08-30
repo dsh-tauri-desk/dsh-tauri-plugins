@@ -15,9 +15,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
  * （旧安装）SlotOutlet 为 undefined —— 此时整体不注册（官方侧栏原样工作），
  * 绝不白屏。
  */
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import type { ClientContext } from 'dsh-tauri/client'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import { compat } from 'dsh-tauri/client'
 import { installPanelLocale } from './locale'
 import { installPanelService } from './service'
 import { installSidebarRoot } from './sidebar'
@@ -38,7 +38,7 @@ export const inject = ['slots', 'layout', 'workspaces', 'locale']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  const cx = compatCtx(ctx)
+  const cx = compat(ctx)
   ctx.effect(
     () => mountPanelStyles(),
     'dsh-tauri-panel: styles',

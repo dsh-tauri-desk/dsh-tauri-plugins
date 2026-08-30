@@ -11,8 +11,8 @@
  *
  * 与 node half（src/index.ts）经 /api/dsh-worktree/* 通信（create/status/checkout/discard）。
  */
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
-import { compatCtx } from '@dsh-tauri/client-lib/compat'
+import type { ClientContext } from 'dsh-tauri/client'
+import { compat } from 'dsh-tauri/client'
 import {
   HYDRATION_EFFECT,
   SESSION_ICONS_EFFECT,
@@ -38,7 +38,7 @@ export const inject = ['slots', 'layout', 'locale', 'sessions', 'workspaces']
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  const cx = compatCtx(ctx)
+  const cx = compat(ctx)
   installLocale(cx)
   ctx.effect(
     () => {

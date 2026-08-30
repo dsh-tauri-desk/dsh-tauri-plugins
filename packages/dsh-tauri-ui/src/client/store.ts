@@ -1,5 +1,5 @@
 import type { SettingsUiState } from './types'
-import { createSnapshotStore } from '@dsh-tauri/client-lib'
+import { createExternalStore } from 'dsh-tauri/client'
 import { useSyncExternalStore } from 'react'
 import { RAIL_WIDTH_MAX, RAIL_WIDTH_MIN } from './constants'
 
@@ -14,8 +14,8 @@ export type { SettingsUiState } from './types'
  *   - 触发器把 open 置 true（并可选跳到某分区）；
  *   - 侧边栏订阅 open/activeId/query 渲染，Esc 或“返回应用”置 false。
  *
- * createSnapshotStore 是 zustand-backed 的 uSES 安全状态源
- * （getSnapshot 在变更间返回同一引用；update 走 immer draft）。
+ * createExternalStore 是框架无关的 uSES 安全状态源
+ * （getSnapshot 在变更间返回同一引用；set 返回不可变新状态）。
  */
 /**
  * 左栏宽度合约，与官方 sidebar 面板一致：
@@ -28,7 +28,7 @@ export function clampRailWidth(px: number): number {
 }
 
 /** 全局唯一共享状态源（模块级单例；插件重载时随 bundle 重建，可接受）。 */
-export const settingsStore = createSnapshotStore<SettingsUiState>({
+export const settingsStore = createExternalStore<SettingsUiState>({
   open: false,
   activeId: undefined,
   query: '',
@@ -37,35 +37,32 @@ export const settingsStore = createSnapshotStore<SettingsUiState>({
 
 /** 打开侧边栏；可选直接跳到一个设置分区（onboarding 的 openSection 用）。 */
 export function openSettings(sectionId?: string): void {
-  settingsStore.update((s) => {
-    s.open = true
-    if (sectionId !== undefined)
-      s.activeId = sectionId
-  })
+  settingsStore.set(s => ({
+    ...s,
+    open: true,
+    ...(sectionId !== undefined ? { activeId: sectionId } : {}),
+  }))
 }
 
 /** 关闭侧边栏并复位视图状态（与官方 close 的复位语义一致；宽度也即忘）。 */
 export function closeSettings(): void {
-  settingsStore.update((s) => {
-    s.open = false
-    s.activeId = undefined
-    s.query = ''
-    s.railWidth = undefined
-  })
+  settingsStore.set(s => ({
+    ...s,
+    open: false,
+    activeId: undefined,
+    query: '',
+    railWidth: undefined,
+  }))
 }
 
 /** 切换左栏当前分区。 */
 export function selectSection(id: string): void {
-  settingsStore.update((s) => {
-    s.activeId = id
-  })
+  settingsStore.set(s => ({ ...s, activeId: id }))
 }
 
 /** 拖拽中实时写入左栏宽度（调用方已按合约钳制）。 */
 export function setRailWidth(px: number): void {
-  settingsStore.update((s) => {
-    s.railWidth = px
-  })
+  settingsStore.set(s => ({ ...s, railWidth: px }))
 }
 
 /** 组件内读取 UI 状态（uSES；state 引用在 update 之间稳定）。 */

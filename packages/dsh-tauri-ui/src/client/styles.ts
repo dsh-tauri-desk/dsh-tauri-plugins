@@ -1,5 +1,5 @@
 /** Settings UI styles generated as css-render nodes. */
-import { CssRender } from 'css-render'
+import { CssRender } from 'dsh-tauri/client'
 import { SETTINGS_STYLE_ID } from './constants'
 
 const cssr = CssRender()

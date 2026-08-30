@@ -133,9 +133,10 @@ export function ArchivePanel(props: ArchivePanelProps): ReactElement | null {
       titles[row.sessionId] = row.title
     const current = archiveStore.getSnapshot().titleById
     if (Object.entries(titles).some(([id, title]) => current[id] !== title)) {
-      archiveStore.update((state) => {
-        Object.assign(state.titleById, titles)
-      })
+      archiveStore.set(state => ({
+        ...state,
+        titleById: { ...state.titleById, ...titles },
+      }))
     }
   }, [rows])
 

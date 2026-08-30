@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import type { ClientContext } from '@dsh-tauri/client-lib/types'
+import type { ClientContext } from 'dsh-tauri/client'
 import type { SessionListSnapshot, WorktreeHydrationSessionsRuntime } from './types'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HANDOFF_WINDOW_MS } from './constants'
@@ -7,12 +7,11 @@ import { openWorktreeSession } from './handoff'
 import { installWorktreeHydration } from './hydrate'
 import { worktreeStore } from './store'
 
-// dsh-client-runtime 的 ./client 入口是 window.__ModuleLoader__ 引导脚本，无法在
-// vitest 中直接加载；这里用最小 SnapshotStore 实现替换 createSnapshotStore。
-vi.mock('@deepseek-ai/dsh-client-runtime/client', () => {
+// dsh-tauri/client 在 vitest 中用最小 ExternalStore 实现替换 createExternalStore。
+vi.mock('dsh-tauri/client', () => {
   const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
   return {
-    createSnapshotStore: (init: unknown) => {
+    createExternalStore: (init: unknown) => {
       let state = clone(init)
       const listeners = new Set<() => void>()
       return {
@@ -21,15 +20,8 @@ vi.mock('@deepseek-ai/dsh-client-runtime/client', () => {
           listeners.add(fn)
           return () => listeners.delete(fn)
         },
-        update: (mutator: (draft: any) => void) => {
-          const draft = clone(state)
-          mutator(draft)
-          state = draft
-          for (const fn of listeners)
-            fn()
-        },
         set: (next: unknown) => {
-          state = clone(next)
+          state = clone(typeof next === 'function' ? (next as (current: unknown) => unknown)(state) : next)
           for (const fn of listeners)
             fn()
         },
