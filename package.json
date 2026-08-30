@@ -24,7 +24,6 @@
     "deepseek-harness"
   ],
   "scripts": {
-    "postinstall": "tsx scripts/setup-desktop.ts",
     "build": "pnpm -r run build",
     "dev": "pnpm -r --parallel run dev",
     "dev:desktop": "tsx scripts/dev-desktop.ts",
