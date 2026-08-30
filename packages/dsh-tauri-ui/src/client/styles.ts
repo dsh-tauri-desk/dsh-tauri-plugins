@@ -113,6 +113,16 @@ const settingsStyle = c([
     lineHeight: '22px',
     fontWeight: 400,
     color: 'var(--dsw-alias-label-primary)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  }),
+  c('.dsh-tu-settingsNavIcon', {
+    flex: 'none',
+  }),
+  c('.dsh-tu-settingsNavLabel', {
+    flex: 1,
+    minWidth: 0,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
