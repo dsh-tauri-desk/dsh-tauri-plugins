@@ -35,6 +35,7 @@ import {
 } from './constants'
 import { ArrowRight } from './icons'
 import { settingsText, useSettingsLocale } from './locale'
+import { SettingsNavIcon } from './nav-icon'
 import { useSettingsSectionRows } from './sections'
 import { concealSettingsObstructions } from './settings-obstructions'
 import {
@@ -138,7 +139,8 @@ export function SettingsSidebar(_props: SettingsSidebarProps): ReactElement | nu
               aria-current={row.id === activeId ? 'true' : undefined}
               onClick={() => selectSection(row.id)}
             >
-              {row.label}
+              <SettingsNavIcon id={row.id} />
+              <span className="dsh-tu-settingsNavLabel">{row.label}</span>
             </button>
           ))}
           {visible.length === 0 && <div className="dsh-tu-settingsEmpty">{settingsText('noResults')}</div>}
