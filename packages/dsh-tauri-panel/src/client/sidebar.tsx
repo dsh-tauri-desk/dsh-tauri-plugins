@@ -3,7 +3,7 @@ import type { ClientContext, WorkspaceId } from 'dsh-tauri/client'
 import type { CSSProperties, ReactElement } from 'react'
 import type { SidebarRootProps } from './types'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
-import { compat } from 'dsh-tauri/client'
+import { resolveStartSession } from 'dsh-tauri/client'
 import { useEffect, useRef, useState } from 'react'
 import { COLLAPSE_SETTLE_MS, PANEL_CLASSES, PANEL_DATA_ATTRIBUTES, SCROLLBAR_LINGER_MS } from './constants'
 import { ChatOutline, FishMark } from './icons'
@@ -96,7 +96,15 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
             type="button"
             className={PANEL_CLASSES.brand}
             aria-label={t('session.new.label')}
-            onClick={() => startSession()}
+            onClick={() => {
+              console.warn('[dsh-tauri-panel] new session requested', { source: 'brand' })
+              try {
+                startSession()
+              }
+              catch (error) {
+                console.error('[dsh-tauri-panel] new session failed', error)
+              }
+            }}
           >
             <span className={PANEL_CLASSES.brandIdentity} aria-hidden="true">
               <span className={PANEL_CLASSES.brandMark}>
@@ -142,7 +150,15 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
           type="button"
           className={`${PANEL_CLASSES.menuItem} ${PANEL_CLASSES.newSession}`}
           title={t('session.new.label')}
-          onClick={() => startSession()}
+          onClick={() => {
+            console.warn('[dsh-tauri-panel] new session requested', { source: 'menu' })
+            try {
+              startSession()
+            }
+            catch (error) {
+              console.error('[dsh-tauri-panel] new session failed', error)
+            }
+          }}
         >
           <span className={PANEL_CLASSES.menuItemIcon}><ChatOutline size={wide ? 14 : 18} /></span>
           <span className={PANEL_CLASSES.menuItemLabel}>{t('session.new')}</span>
@@ -182,7 +198,6 @@ function SidebarRootClone({ collapsed, width, startSession, toggleSidebar, t }: 
  * @param ctx - 客户端根上下文。
  */
 export function installSidebarRoot(ctx: Context): void {
-  const cx = compat(ctx as ClientContext)
   ctx.slots.inject('sidebar' as never, () =>
     ctx.slots.register(
       {
@@ -194,7 +209,14 @@ export function installSidebarRoot(ctx: Context): void {
           'sidebar.panel.action': { kind: 'list', scope: 'root' },
         },
         inject: () => ({
-          startSession: (workspaceId?: WorkspaceId) => cx.workspaces.startSession?.(workspaceId),
+          startSession: (workspaceId?: WorkspaceId) => {
+            const start = resolveStartSession(ctx as ClientContext)
+            if (start === undefined) {
+              console.error('[dsh-tauri-panel] new session unavailable: no workspace navigation service')
+              return
+            }
+            void start(workspaceId)
+          },
           toggleSidebar: () => ctx.layout.toggleSidebar(),
         }),
       } as never,

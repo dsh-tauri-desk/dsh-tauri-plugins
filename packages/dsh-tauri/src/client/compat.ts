@@ -1,13 +1,31 @@
 import type { ClientContext } from './types'
 
 type RuntimeObject = Record<string, unknown>
+export type StartSession = (workspaceId?: string) => unknown
+
+/** Read a service without triggering Cordis' inject-only property guard. */
+function lookup(ctx: ClientContext, name: string): unknown {
+  const anyCtx = ctx as unknown as { get?: (name: string) => unknown } & RuntimeObject
+  try {
+    return typeof anyCtx.get === 'function' ? anyCtx.get(name) : anyCtx[name]
+  }
+  catch {
+    return undefined
+  }
+}
+
+/** Resolve the navigation method across Alpha and rc.2 service layouts. */
+export function resolveStartSession(ctx: ClientContext): StartSession | undefined {
+  const uiWorkspace = lookup(ctx, 'uiWorkspace') as RuntimeObject | undefined
+  const workspaces = lookup(ctx, 'workspaces') as RuntimeObject | undefined
+  const owner = uiWorkspace ?? workspaces
+  const fn = owner?.startSession
+  return typeof fn === 'function' ? (workspaceId?: string) => fn.call(owner, workspaceId) : undefined
+}
 
 /** Adapt alpha's nested list/navigation services to the rc.2 plugin contract. */
 export function compat(ctx: ClientContext): ClientContext {
-  const anyCtx = ctx as unknown as { get?: (n: string) => unknown } & RuntimeObject
-
-  // Inline Lookup Helper: 优先使用安全查找 ctx.get(name)
-  const safeLookup = (name: string): unknown => typeof anyCtx.get === 'function' ? anyCtx.get(name) : anyCtx[name]
+  const safeLookup = (name: string): unknown => lookup(ctx, name)
 
   // Inline Alpha Detection: 判断当前环境是否为 Alpha 版本
   const alphaSessions = safeLookup('sessions') as RuntimeObject | undefined

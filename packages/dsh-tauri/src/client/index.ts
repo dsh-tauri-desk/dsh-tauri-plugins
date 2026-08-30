@@ -35,7 +35,7 @@ export const name = PLUGIN_ID
 /** 需要的客户端服务：layout（侧边栏切换）。 */
 export const inject = PLUGIN_INJECT
 
-export { compat } from './compat'
+export { compat, resolveStartSession } from './compat'
 export * from './store'
 
 export type * from './types'

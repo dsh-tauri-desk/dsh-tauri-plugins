@@ -1,6 +1,6 @@
 import type { ClientContext } from './types'
 import { describe, expect, it, vi } from 'vitest'
-import { compat } from './compat'
+import { compat, resolveStartSession } from './compat'
 
 interface CompatFace {
   sessions?: {
@@ -19,6 +19,15 @@ function context(services: Record<string, unknown>): ClientContext {
 }
 
 describe('compat', () => {
+  it('resolves Alpha uiWorkspace lazily when the service was absent during apply', () => {
+    const ctx = context({
+      get: vi.fn((name: string) => name === 'uiWorkspace' ? { startSession: vi.fn() } : undefined),
+    })
+    const start = resolveStartSession(ctx)
+    expect(start).toBeTypeOf('function')
+    start?.('workspace-a')
+  })
+
   it('passes the rc.2 context through untouched when sessions expose getSnapshot', () => {
     const ctx = context({
       sessions: {
