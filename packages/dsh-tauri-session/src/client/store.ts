@@ -5,8 +5,8 @@
  * 每个归档会话的业务字段（标题、更新时间、工作区组）由组件合并
  * ctx.sessions / ctx.workspaces 的运行时快照得到，这里不复制那份数据。
  *
- * unarchive/delete/clear 走宿主注册表内部状态机（官方没有对应 unary 动作），
- * 不会产生官方 changed frame —— 因此这些变更成功后调用方必须传入 resync
+ * unarchive 走宿主注册表内部状态机（官方没有对应 unary 动作），不会产生官方
+ * changed frame —— 因此变更成功后调用方必须传入 resync
  * （ctx.workspaces.manager.refresh）重新拉取归档镜像，否则列表原地不动。
  */
 import type { ArchivedListPayload, ArchiveSort, ArchiveUiState } from './types'
@@ -69,32 +69,11 @@ export function postUnarchive(sessionId: string): Promise<{ ok: boolean }> {
   })
 }
 
-/** 彻底删除一个归档会话（宿主移除 + 物理删除会话数据，不可恢复）。 */
-export function postDelete(sessionId: string): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>('/delete', {
-    method: 'POST',
-    body: JSON.stringify({ sessionId }),
-  })
-}
-
 /** 归档整个工作区组（一次写入多条记录）。 */
 export function postArchiveWorkspace(workspaceId: string, sessionIds: string[]): Promise<ArchivedListPayload> {
   return request<ArchivedListPayload>('/archive-workspace', {
     method: 'POST',
     body: JSON.stringify({ workspaceId, sessionIds }),
-  })
-}
-
-/** 清空归档（全部会话彻底删除，不可恢复）。 */
-export function postClear(): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>('/clear', { method: 'POST', body: JSON.stringify({}) })
-}
-
-/** 删除项目内的全部归档会话。 */
-export function postDeleteWorkspace(sessionIds: readonly string[]): Promise<{ ok: boolean }> {
-  return request<{ ok: boolean }>('/delete-workspace', {
-    method: 'POST',
-    body: JSON.stringify({ sessionIds }),
   })
 }
 
@@ -206,20 +185,4 @@ export async function archiveWorkspace(workspaceId: string, sessionIds: string[]
 /** 取消归档并刷新（resync 重新拉取官方归档镜像）。返回是否成功。 */
 export function unarchiveSession(sessionId: string, resync?: () => Promise<void>): Promise<boolean> {
   return runMutation(() => postUnarchive(sessionId), resync, [sessionId])
-}
-
-/** 彻底删除单个归档会话并刷新。返回是否成功。 */
-export function deleteSession(sessionId: string, resync?: () => Promise<void>): Promise<boolean> {
-  return runMutation(() => postDelete(sessionId), resync, [sessionId])
-}
-
-/** 彻底删除全部归档会话并刷新。返回是否成功。 */
-export function clearArchive(resync?: () => Promise<void>): Promise<boolean> {
-  const sessionIds = [...archiveStore.getSnapshot().archived.archivedSessionIds]
-  return runMutation(() => postClear(), resync, sessionIds)
-}
-
-/** 彻底删除项目内归档会话并刷新。返回是否成功。 */
-export function deleteWorkspaceSessions(sessionIds: readonly string[], resync?: () => Promise<void>): Promise<boolean> {
-  return runMutation(() => postDeleteWorkspace(sessionIds), resync, sessionIds)
 }

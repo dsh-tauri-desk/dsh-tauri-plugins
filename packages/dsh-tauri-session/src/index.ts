@@ -11,8 +11,9 @@
  *     - `POST /archive-workspace` 归档一组会话（插件 UI「归档工作区」）；
  *     - `POST /unarchive`       从宿主归档集合移除（宿主无公开 unarchive，
  *                               走注册表内部状态机，见 `updateRegistryArchiveSet`）；
- *     - `POST /delete`          彻底删除单个归档会话（归档集合移除 + 物理删除会话数据）；
- *     - `POST /clear`           彻底删除全部已归档会话（同上，批量）。
+ *     - `POST /delete`          兼容端点，永久删除禁用时返回 503；
+ *     - `POST /delete-workspace` 兼容端点，永久删除禁用时返回 503；
+ *     - `POST /clear`           兼容端点，永久删除禁用时返回 503。
  *   插件初始化时把旧版自持 `archive.json` 的记录一次性迁入宿主集合后删除旧文件。
  */
 
@@ -301,8 +302,8 @@ function removeLiveSessions(sessions: SessionStoreSurface | undefined, sessionId
   }
 }
 
-/** 彻底删除一个归档会话（成员校验 + 物理删除 + 记账更新）。 */
-async function permanentlyDeleteSession(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
+/** 旧版实现仅暂留供后续迁移参考；当前没有任何路由可达，禁止在宿主事务落地前重新接线。 */
+async function _permanentlyDeleteSession(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
   const sessionId = String(body.sessionId ?? '')
   if (!sessionId)
     throw new Error('缺少 sessionId')
@@ -318,7 +319,7 @@ async function permanentlyDeleteSession(ctx: HostContext, dshHome: string, body:
 }
 
 /** 彻底删除指定归档会话（先物理删除全部，再批量更新记账）。 */
-async function permanentlyDeleteSelected(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
+async function _permanentlyDeleteSelected(ctx: HostContext, dshHome: string, body: Record<string, unknown>): Promise<{ ok: true }> {
   const rawIds = body.sessionIds
   if (!Array.isArray(rawIds) || rawIds.length === 0)
     throw new Error('缺少 sessionIds')
@@ -339,7 +340,7 @@ async function permanentlyDeleteSelected(ctx: HostContext, dshHome: string, body
 }
 
 /** 彻底删除全部已归档会话（先物理删除全部，再批量更新记账）。 */
-async function permanentlyDeleteAll(ctx: HostContext, dshHome: string): Promise<{ ok: true }> {
+async function _permanentlyDeleteAll(ctx: HostContext, dshHome: string): Promise<{ ok: true }> {
   const registry = ctx.workspaceRegistry as { archivedSessionIds?: readonly string[] } | undefined
   const ids = [...(registry?.archivedSessionIds ?? [])]
   const { sessions } = requireDeletionSurfaces(ctx, ids)
@@ -405,8 +406,15 @@ async function migrateLegacyArchive(ctx: HostContext, dshHome: string): Promise<
   ctx.logger?.info?.(`[${SESSION_PLUGIN_NAME}] migrated ${migrated}/${sessionIds.length} legacy archived session(s) into the host registry`)
 }
 
+const permanentDeletionUnavailable = routeHandler(
+  async () => [503, {
+    error: '当前 DSH 尚无可安全协调会话写入器的删除 API；永久删除已暂时禁用，请保留归档或取消归档。',
+  }],
+  { mutate: true },
+)
+
 /** 构建路由列表。 */
-export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
+export function buildRoutes(ctx: HostContext, _dshHome: string): any[] {
   const routes = [
     {
       kind: 'exact',
@@ -431,17 +439,17 @@ export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
     {
       kind: 'exact',
       path: `${API_PREFIX}/delete`,
-      handler: routeHandler(async body => [200, await permanentlyDeleteSession(ctx, dshHome, body)], { mutate: true }),
+      handler: permanentDeletionUnavailable,
     },
     {
       kind: 'exact',
       path: `${API_PREFIX}/delete-workspace`,
-      handler: routeHandler(async body => [200, await permanentlyDeleteSelected(ctx, dshHome, body)], { mutate: true }),
+      handler: permanentDeletionUnavailable,
     },
     {
       kind: 'exact',
       path: `${API_PREFIX}/clear`,
-      handler: routeHandler(async () => [200, await permanentlyDeleteAll(ctx, dshHome)], { mutate: true }),
+      handler: permanentDeletionUnavailable,
     },
   ]
   return routes.map(route => ({
@@ -464,7 +472,7 @@ export function apply(ctx: HostContext, config: PluginConfig = {}): void {
     void migrateLegacyArchive(ctx, dshHome)
   }, `${SESSION_PLUGIN_NAME}: migrate legacy archive`)
 
-  // HTTP 路由注册（客户端经此调用 archived/archive/unarchive/delete/clear）。
+  // HTTP 路由注册（归档/取消归档可用；永久删除兼容端点 fail closed）。
   ctx.effect(() => {
     const disposers = buildRoutes(ctx, dshHome).map(route => ctx.webServer.register(route))
     return () => {
