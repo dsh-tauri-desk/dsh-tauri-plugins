@@ -4,10 +4,26 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { buildRoutes, checkoutToLocal, ensureWorktree } from '../src/index.js'
 
 const execFileAsync = promisify(execFile)
+
+describe('dsh-tauri-worktree route authentication', () => {
+  it('rejects every route before reading or mutating worktree state', async () => {
+    const requestRejection = vi.fn(() => 401 as const)
+    const routes = buildRoutes({ connection: { requestRejection } }, {})
+    expect(routes).toHaveLength(5)
+    for (const route of routes) {
+      const writeHead = vi.fn()
+      const end = vi.fn()
+      await route.handler({ method: 'POST' }, { writeHead, end })
+      expect(writeHead).toHaveBeenCalledWith(401)
+      expect(end).toHaveBeenCalledWith('unauthorized')
+    }
+    expect(requestRejection).toHaveBeenCalledTimes(routes.length)
+  })
+})
 
 /** 在仓库内执行 git，返回 stdout（去尾空白）。失败时抛错。 */
 async function runGit(workdir: string, args: string[]): Promise<string> {
@@ -356,6 +372,9 @@ describe('dsh-tauri-worktree carry staged', () => {
 /** 最小宿主 ctx：只提供 status/create 路由用到的 sessions/workspaceRegistry 面。 */
 function hostCtx(sessions: Record<string, unknown>): any {
   return {
+    connection: {
+      requestRejection: () => undefined,
+    },
     sessions: {
       get: (id: string) => sessions[id],
       list: () => Object.values(sessions),

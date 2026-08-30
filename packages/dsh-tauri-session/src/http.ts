@@ -7,6 +7,27 @@ export type { RouteFunction, RouteResult } from './types.js'
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' }
 const MAX_BODY_BYTES = 1024 * 1024
 
+interface ConnectionGate {
+  requestRejection: (request: IncomingMessage) => 401 | 403 | undefined
+}
+
+type RouteHandler = (request: IncomingMessage, response: ServerResponse) => void | Promise<void>
+
+/** Apply DSH's browser trust and authentication boundary before route logic. */
+export function withConnectionAuth(connection: ConnectionGate | undefined, handler: RouteHandler): RouteHandler {
+  if (typeof connection?.requestRejection !== 'function')
+    throw new TypeError('dsh-tauri-session requires the DSH connection authentication gate')
+  return async (request, response) => {
+    const rejection = connection.requestRejection(request)
+    if (rejection !== undefined) {
+      response.writeHead(rejection)
+      response.end(rejection === 401 ? 'unauthorized' : 'forbidden')
+      return
+    }
+    await handler(request, response)
+  }
+}
+
 function isLoopback(req: IncomingMessage): boolean {
   const address = req.socket?.remoteAddress ?? ''
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1'

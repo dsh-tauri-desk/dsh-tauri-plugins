@@ -28,14 +28,14 @@ import { homedir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { SESSION_API_PREFIX, SESSION_ARCHIVE_FILE, SESSION_PLUGIN_NAME } from './constants.js'
-import { routeHandler } from './http.js'
+import { routeHandler, withConnectionAuth } from './http.js'
 import { loadArchive, saveArchive, sessionStateDir } from './storage.js'
 
 /** 插件名（诊断元数据，与导出的 name 一致）。 */
 export const name = SESSION_PLUGIN_NAME
 
 /** 需要的宿主服务：webServer（HTTP 路由）、sessions（会话枚举/header）、workspaceRegistry（归档集合）。 */
-export const inject = ['webServer', 'sessions', 'workspaceRegistry']
+export const inject = ['webServer', 'sessions', 'workspaceRegistry', 'connection']
 
 /** API 路由前缀（客户端同源 fetch）。 */
 export const API_PREFIX = SESSION_API_PREFIX
@@ -407,7 +407,7 @@ async function migrateLegacyArchive(ctx: HostContext, dshHome: string): Promise<
 
 /** 构建路由列表。 */
 export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
-  return [
+  const routes = [
     {
       kind: 'exact',
       path: `${API_PREFIX}/archived`,
@@ -444,6 +444,10 @@ export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
       handler: routeHandler(async () => [200, await permanentlyDeleteAll(ctx, dshHome)], { mutate: true }),
     },
   ]
+  return routes.map(route => ({
+    ...route,
+    handler: withConnectionAuth(ctx.connection, route.handler),
+  }))
 }
 
 /**

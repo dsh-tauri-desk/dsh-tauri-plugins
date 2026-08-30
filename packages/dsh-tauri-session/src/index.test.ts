@@ -1,6 +1,22 @@
 import { resolve, sep } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { encodeSessionId, isWithinSessionsRoot, updateRegistryArchiveSet } from './index'
+import { describe, expect, it, vi } from 'vitest'
+import { buildRoutes, encodeSessionId, isWithinSessionsRoot, updateRegistryArchiveSet } from './index'
+
+describe('dsh-tauri-session route authentication', () => {
+  it('rejects every route before archive or deletion logic', async () => {
+    const requestRejection = vi.fn(() => 403 as const)
+    const routes = buildRoutes({ connection: { requestRejection } }, 'unused')
+    expect(routes).toHaveLength(7)
+    for (const route of routes) {
+      const writeHead = vi.fn()
+      const end = vi.fn()
+      await route.handler({ method: 'POST' }, { writeHead, end })
+      expect(writeHead).toHaveBeenCalledWith(403)
+      expect(end).toHaveBeenCalledWith('forbidden')
+    }
+    expect(requestRejection).toHaveBeenCalledTimes(routes.length)
+  })
+})
 
 interface FakeRegistryState {
   initialized: boolean

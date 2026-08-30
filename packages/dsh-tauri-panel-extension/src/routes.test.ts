@@ -2,9 +2,9 @@ import type { SkillRow } from './routes.ts'
 import type { SkillRootEntry } from './state.ts'
 import type { HostSkill } from './types.ts'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { API_PREFIX } from './constants.ts'
-import { repositoryForSkill, sortSkillRows, toSkillRow } from './routes.ts'
+import { mountPanelExtensionRoutes, repositoryForSkill, sortSkillRows, toSkillRow } from './routes.ts'
 
 const invocation = { modelInvocable: true, userInvocable: true }
 
@@ -56,5 +56,36 @@ describe('skill repository metadata', () => {
 describe('host route namespace', () => {
   it('uses the panel extension API prefix', () => {
     expect(API_PREFIX).toBe('/dsh-tauri-panel-extension')
+  })
+
+  it('authenticates every registered route before manager logic', async () => {
+    const routes: Array<{ handler: (request: any, response: any) => Promise<void> | void }> = []
+    const requestRejection = vi.fn(() => 401 as const)
+    const dispose = mountPanelExtensionRoutes({
+      connection: { requestRejection },
+      skills: {
+        list: vi.fn(() => Promise.reject(new Error('must not run'))),
+        get: vi.fn(() => Promise.reject(new Error('must not run'))),
+      },
+      webServer: {
+        register: (route) => {
+          routes.push(route)
+          return () => {}
+        },
+      },
+    }, {
+      profileDirPath: 'unused',
+      remountProvider: () => Promise.reject(new Error('must not run')),
+    })
+    expect(routes).toHaveLength(16)
+    for (const route of routes) {
+      const writeHead = vi.fn()
+      const end = vi.fn()
+      await route.handler({ method: 'POST' }, { writeHead, end })
+      expect(writeHead).toHaveBeenCalledWith(401)
+      expect(end).toHaveBeenCalledWith('unauthorized')
+    }
+    expect(requestRejection).toHaveBeenCalledTimes(routes.length)
+    dispose()
   })
 })

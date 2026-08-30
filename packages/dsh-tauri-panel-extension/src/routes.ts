@@ -10,7 +10,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
 import { scanAllMcp } from './agents.ts'
 import { API_PREFIX } from './constants.ts'
-import { readJsonBody, sameOrigin, sendJson } from './http.ts'
+import { readJsonBody, sameOrigin, sendJson, withConnectionAuth } from './http.ts'
 import { listMcp, removeMcp, setMcpDisabled, upsertMcp, validateMcpInput } from './mcp.ts'
 import { openDirectory } from './opener.ts'
 import { addGitRepo, addLocalRepo, rootExists } from './repos.ts'
@@ -112,8 +112,12 @@ export interface PanelExtensionRoutesConfig {
 
 /** Register the manager's routes; returns the disposer removing them all. */
 export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: PanelExtensionRoutesConfig): () => void {
+  const register: PanelExtensionHost['webServer']['register'] = route => host.webServer.register({
+    ...route,
+    handler: withConnectionAuth(host.connection, route.handler),
+  })
   const disposers = [
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/skills`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -134,7 +138,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/skill`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -159,7 +163,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/skill/save`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -212,7 +216,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/skill/delete`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -237,7 +241,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/skill/policy`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -274,7 +278,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/open`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -347,7 +351,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/roots`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -360,7 +364,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/roots/add`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -399,7 +403,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/roots/remove`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -438,7 +442,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/mcp`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -451,7 +455,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/mcp/save`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -480,7 +484,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/mcp/toggle`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -508,7 +512,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/mcp/remove`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -535,7 +539,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
         }
       },
     }),
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/import/scan`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -557,7 +561,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/import/apply`,
       handler: async (request: IncomingMessage, response: ServerResponse) => {
@@ -611,7 +615,7 @@ export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: Pane
       },
     }),
 
-    host.webServer.register({
+    register({
       kind: 'exact',
       path: `${API_PREFIX}/restart`,
       handler: (request: IncomingMessage, response: ServerResponse) => {

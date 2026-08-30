@@ -14,7 +14,7 @@ import {
   RIGHTCLICK_API_PREFIX,
   RIGHTCLICK_PLUGIN_NAME,
 } from './constants.js'
-import { isSameOriginJsonRequest, readJsonBody, respond } from './http.js'
+import { isSameOriginJsonRequest, readJsonBody, respond, withConnectionAuth } from './http.js'
 import { openUrl, safeWebUrl } from './opener.js'
 
 /** 插件名（诊断元数据，与导出的 name 一致）。 */
@@ -25,7 +25,7 @@ export const name = RIGHTCLICK_PLUGIN_NAME
  *  workspaceRegistry（归档过渡/记账）、agents（停止运行中会话）、
  *  sessions（live session 脱离）、storageDomain（投影/工作区账本）。
  */
-export const inject = ['webServer']
+export const inject = ['webServer', 'connection']
 
 /** API 路由前缀（客户端同源 fetch）。 */
 export const API_PREFIX = RIGHTCLICK_API_PREFIX
@@ -40,7 +40,7 @@ export function buildRoutes(ctx: HostContext): HostRoute[] {
     return result
   }
 
-  return [
+  const routes: HostRoute[] = [
     {
       kind: 'exact',
       path: OPEN_URL_ROUTE,
@@ -73,6 +73,10 @@ export function buildRoutes(ctx: HostContext): HostRoute[] {
       },
     },
   ]
+  return routes.map(route => ({
+    ...route,
+    handler: withConnectionAuth(ctx.connection, route.handler),
+  }))
 }
 
 /**

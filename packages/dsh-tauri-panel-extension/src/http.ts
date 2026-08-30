@@ -1,7 +1,25 @@
 /** HTTP helpers: JSON body reading, same-origin check, JSON responses. */
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import type { ConnectionGate } from './types.ts'
 import { Buffer } from 'node:buffer'
+
+type RouteHandler = (request: IncomingMessage, response: ServerResponse) => void | Promise<void>
+
+/** Apply DSH's browser trust and authentication boundary before route logic. */
+export function withConnectionAuth(connection: ConnectionGate | undefined, handler: RouteHandler): RouteHandler {
+  if (typeof connection?.requestRejection !== 'function')
+    throw new TypeError('dsh-tauri-panel-extension requires the DSH connection authentication gate')
+  return async (request, response) => {
+    const rejection = connection.requestRejection(request)
+    if (rejection !== undefined) {
+      response.writeHead(rejection)
+      response.end(rejection === 401 ? 'unauthorized' : 'forbidden')
+      return
+    }
+    await handler(request, response)
+  }
+}
 
 /** Read and JSON-parse a request body, bounded to 1 MiB (skill bodies live here). */
 export async function readJsonBody(request: IncomingMessage): Promise<unknown> {

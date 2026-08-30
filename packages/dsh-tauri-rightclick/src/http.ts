@@ -5,6 +5,27 @@ import type { JsonBody } from './types.js'
 import { Buffer } from 'node:buffer'
 import { MAX_BODY_BYTES } from './constants.js'
 
+interface ConnectionGate {
+  requestRejection: (request: IncomingMessage) => 401 | 403 | undefined
+}
+
+type RouteHandler = (request: IncomingMessage, response: ServerResponse) => void | Promise<void>
+
+/** Apply DSH's browser trust and authentication boundary before route logic. */
+export function withConnectionAuth(connection: ConnectionGate | undefined, handler: RouteHandler): RouteHandler {
+  if (typeof connection?.requestRejection !== 'function')
+    throw new TypeError('dsh-tauri-rightclick requires the DSH connection authentication gate')
+  return async (request, response) => {
+    const rejection = connection.requestRejection(request)
+    if (rejection !== undefined) {
+      response.writeHead(rejection)
+      response.end(rejection === 401 ? 'unauthorized' : 'forbidden')
+      return
+    }
+    await handler(request, response)
+  }
+}
+
 export type { RouteFunction, RouteResult } from './types.js'
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' }
