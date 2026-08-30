@@ -34,6 +34,13 @@ export const dshExternal = [
 ]
 
 interface DshConfig {
+  /**
+   * Package-level publint toggle (defaults to `true`). Turn it off for packages
+   * whose client bundle inlines CJS deps (e.g. css-render) that publint's static
+   * scan mistakes for `exports.__esModule + exports.default` — the assignment
+   * lives in a sealed module wrapper and never reaches the real module exports.
+   */
+  publint?: UserConfig['publint']
   server?: UserConfig
   client?: UserConfig
 }
@@ -43,7 +50,7 @@ export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
     outDir: 'dist',
     format: 'esm',
     outExtensions: () => ({ js: '.js' }),
-    publint: true,
+    publint: options.publint ?? true,
     external: dshExternal,
   }
 
@@ -63,7 +70,7 @@ export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
       // CJS output is required so its exports remain inside the loader factory.
       format: 'cjs',
       // CJS must not use `.js` in a `"type": "module"` package — publint would
-      // flag the ESM/CJS mismatch. Emit `.cjs` (types stay `client.d.ts`).
+      // flag the ESM/CJS mismatch. Emit `.cjs` (declarations pair as `.d.cts`).
       outExtensions: () => ({ js: '.cjs' }),
       define: { 'process.env.NODE_ENV': JSON.stringify('production') },
       ...clientBundleRegistration(),
@@ -72,7 +79,7 @@ export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
       publint: false,
       dts: false,
       sourcemap: true,
-      // minify: true,
+      minify: true,
       clean: false,
       ...options.client,
     },
