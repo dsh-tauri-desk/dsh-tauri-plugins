@@ -24,7 +24,8 @@
     "./client": {
       "types": "./dist/client.d.cts",
       "import": "./dist/client.cjs",
-      "require": "./dist/client.cjs"
+      "require": "./dist/client.cjs",
+      "default": "./dist/client.cjs"
     },
     "./package.json": "./package.json"
   },
