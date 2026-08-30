@@ -21,14 +21,20 @@ function fakeCtx(active: 'zh' | 'en'): Context {
 describe('text', () => {
   it('interpolates {name} placeholders (en)', () => {
     installLocale(fakeCtx('en'))
-    expect(text('archiveWorkspaceConfirm', { title: 'Minecraft', count: 3 }))
-      .toBe('Archive 3 sessions in “Minecraft”?')
+    expect(text('archiveWorkspaceTitle', { count: 3 }))
+      .toBe('Archive 3 sessions?')
   })
 
   it('interpolates {name} placeholders (zh)', () => {
     installLocale(fakeCtx('zh'))
-    expect(text('archiveWorkspaceConfirm', { title: 'Minecraft', count: 3 }))
-      .toBe('归档“Minecraft”中的 3 个会话？')
+    expect(text('archiveWorkspaceTitle', { count: 3 }))
+      .toBe('归档 3 个会话？')
+  })
+
+  it('interpolates workspace delete description', () => {
+    installLocale(fakeCtx('en'))
+    expect(text('deleteWorkspaceDescription', { title: 'Minecraft' }))
+      .toContain('“Minecraft”')
   })
 })
 

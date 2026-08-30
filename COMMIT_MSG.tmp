@@ -1,0 +1,23 @@
+fix(client): repair workspace archive flow and restore workspace delete (#235)
+
+dsh-tauri-session:
+- workspace-patch: resolve the archive target from the clicked project row
+  against the runtime snapshot instead of the DOM group heuristic. The
+  official browser renders no session rows for collapsed groups, so the old
+  ancestor scan either found nothing (all collapsed: archive did nothing)
+  or landed on the outer container (mixed: archived the nearest expanded
+  workspace instead). Session ids now come from workspace.sessionIds.
+- workspace-patch: keep the official "delete workspace" item intact and
+  append a separate "archive workspace" item next to it, restoring the
+  delete capability that the previous rewrite removed.
+- store: clear suppressedSessionIds after a successful archive refresh.
+  The suppression is only meant to hide ghost rows during the mutation ->
+  refresh window; keeping it forever made a session unarchived and then
+  re-archived disappear from both the sidebar and the archive page.
+
+dsh-tauri-rightclick:
+- replace native window.confirm with a client-styled primitives Modal for
+  workspace/ungrouped archive and the new workspace delete confirmation
+  (native confirm renders as the WebView2 "embedded page" banner).
+- add a danger "delete workspace" entry to the workspace context menu
+  (official non-destructive delete keeps folder and sessions).

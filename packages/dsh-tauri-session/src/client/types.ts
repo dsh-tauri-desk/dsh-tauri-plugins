@@ -147,6 +147,7 @@ export type LocaleKey
     | 'deleteProjectTitle'
     | 'deleteProjectBody'
     | 'archiveWorkspace'
+    | 'archiveWorkspaceMenu'
     | 'archiveWorkspaceTitle'
     | 'archiveWorkspaceDescription'
     | 'archiveWorkspaceConfirm'

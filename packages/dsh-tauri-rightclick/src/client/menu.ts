@@ -15,6 +15,7 @@ import {
   archiveSession,
   archiveUngroupedSessions,
   archiveWorkspaceSessions,
+  deleteWorkspaceAction,
   forkSession,
   openExternalUrl,
   openInExplorer,
@@ -258,6 +259,7 @@ export function installContextMenu(ctx: ClientContext): () => void {
       add(root, text('copyWorkspacePath'), () => copyText(workspace.path, 'copiedWorkspacePath'))
       split(root)
       add(root, text('archiveWorkspaceSessions'), () => archiveWorkspaceSessions(workspaces, workspace))
+      add(root, text('deleteWorkspace'), () => deleteWorkspaceAction(workspaces, workspace), '', true)
 
       split(root)
       add(root, text('refresh'), () => globalThis.location.reload(), 'Ctrl+R')

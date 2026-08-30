@@ -1,8 +1,8 @@
 # dsh-tauri-session
 
 DeepSeek Harness 桌面端插件：管理「已归档的聊天」的设置页（搜索 / 排序 / 分组 /
-项目选择 / 取消归档 / 全部删除），并把官方工作区浏览器的「删除工作区」改写为
-「归档工作区」。
+项目选择 / 取消归档 / 全部删除），并在官方工作区浏览器的「删除工作区」菜单旁
+追加「归档工作区」入口。
 
 采用 host half / client half 架构：
 
@@ -60,9 +60,15 @@ v2 起插件不再自持 `archive.json`，而是直接使用**宿主 `WorkspaceR
 portal 渲染到 `document.body`）里的 `button[role=menuitem]` 条目，不是侧边栏按钮。
 补丁因此：
 
-1. 监听每个项目行（`[role=treeitem][aria-expanded]`）「…」按钮的点击，记录其工作区组；
-2. 扫描 portal 菜单，把「删除工作区」条目改写为「归档工作区」并拦截其点击，
-   改为归档该组全部会话（`/api/dsh-session/archive-workspace`）。
+1. 监听每个项目行（`[role=treeitem][aria-expanded]`）「…」按钮的点击，按行标题与
+   运行时快照唯一匹配记录其工作区 id；
+2. 扫描 portal 菜单：**保留**官方「删除工作区」条目（官方 Modal 确认、非破坏性：
+   文件夹与会话记录保留，会话归入未分组），在其后**追加**「归档工作区」条目，
+   点击 → 客户端样式确认框 → 归档该组全部会话（`/api/dsh-session/archive-workspace`）。
+
+归档目标与会话清单全部来自运行时快照（`workspace.sessionIds`），不依赖
+「组容器里装得下会话行」的 DOM 启发式——官方浏览器在组折叠时不渲染会话行，
+旧实现会因此「全部折叠时无动作、部分展开时错归档到相邻工作区」。
 
 ## 目录约定
 

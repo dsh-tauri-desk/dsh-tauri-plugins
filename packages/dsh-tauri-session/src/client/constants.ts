@@ -63,7 +63,7 @@ export const MENU_ITEM_SELECTOR = 'button[role="menuitem"]'
 /** Sidebar shell seat holding the official WorkspaceBrowser. */
 export const SIDEBAR_SELECTOR = '[data-slot="sidebar"]'
 
-/** Attribute marking a project-row ellipsis whose click records the open menu's group. */
+/** Attribute marking a project-row ellipsis whose click records the open menu's workspace. */
 export const WORKSPACE_MENU_ANCHOR_ATTRIBUTE = 'data-dsh-tauri-session-menu-anchor'
-/** Attribute marking a portal delete item already rewritten into the archive action. */
-export const WORKSPACE_ACTION_ATTRIBUTE = 'data-dsh-tauri-session-archive-action'
+/** Attribute marking a portal workspace menu already patched with the archive item. */
+export const WORKSPACE_MENU_PATCH_ATTRIBUTE = 'data-dsh-tauri-session-archive-menu-patched'
