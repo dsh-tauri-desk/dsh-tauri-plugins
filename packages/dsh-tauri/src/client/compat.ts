@@ -61,12 +61,17 @@ export function compat(ctx: ClientContext): ClientContext {
       if (prop === 'list')
         return workspaceList
       if (prop === 'startSession') {
-        const fn = uiWorkspace?.startSession
-        return typeof fn === 'function' ? (id?: string) => fn.call(uiWorkspace, id) : undefined
+        // rc.2 官方运行时的 workspaces 自身已提供 startSession；旧 alpha 才经由
+        // 独立的 uiWorkspace 服务暴露。优先 uiWorkspace，缺失时回退到 rawWorkspaces，
+        // 避免按钮点击被静默吞掉。
+        const owner = uiWorkspace ?? rawWorkspaces
+        const fn = owner.startSession
+        return typeof fn === 'function' ? (id?: string) => fn.call(owner, id) : undefined
       }
       if (prop === 'connectWorkspace') {
-        const fn = uiWorkspace?.connectWorkspace
-        return typeof fn === 'function' ? (id: string) => fn.call(uiWorkspace, id) : undefined
+        const owner = uiWorkspace ?? rawWorkspaces
+        const fn = owner.connectWorkspace
+        return typeof fn === 'function' ? (id: string) => fn.call(owner, id) : undefined
       }
 
       return Reflect.get(target, prop, receiver)
