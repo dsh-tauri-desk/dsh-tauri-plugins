@@ -9,13 +9,12 @@
  */
 
 import type { HostContext, HostRoute } from './types.js'
+import { isSameOriginJsonRequest, openUrl, readJsonBody, respond, safeWebUrl, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
 import {
   OPEN_URL_ROUTE,
   RIGHTCLICK_API_PREFIX,
   RIGHTCLICK_PLUGIN_NAME,
 } from './constants.js'
-import { isSameOriginJsonRequest, readJsonBody, respond, withConnectionAuth } from './http.js'
-import { openUrl, safeWebUrl } from './opener.js'
 
 /** 插件名（诊断元数据，与导出的 name 一致）。 */
 export const name = RIGHTCLICK_PLUGIN_NAME
@@ -75,7 +74,7 @@ export function buildRoutes(ctx: HostContext): HostRoute[] {
   ]
   return routes.map(route => ({
     ...route,
-    handler: withConnectionAuth(ctx.connection, route.handler),
+    handler: withConnectionAuth(ctx.connection, route.handler, 'dsh-tauri-rightclick'),
   }))
 }
 

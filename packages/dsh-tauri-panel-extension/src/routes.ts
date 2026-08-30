@@ -8,9 +8,9 @@ import type { HostSkill, PanelExtensionHost, SkillRepositoryMetadata } from './t
 import { mkdirSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { readJsonBody, sameOrigin, sendJson, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
 import { scanAllMcp } from './agents.ts'
 import { API_PREFIX } from './constants.ts'
-import { readJsonBody, sameOrigin, sendJson, withConnectionAuth } from './http.ts'
 import { listMcp, removeMcp, setMcpDisabled, upsertMcp, validateMcpInput } from './mcp.ts'
 import { openDirectory } from './opener.ts'
 import { addGitRepo, addLocalRepo, rootExists } from './repos.ts'
@@ -114,7 +114,7 @@ export interface PanelExtensionRoutesConfig {
 export function mountPanelExtensionRoutes(host: PanelExtensionHost, config: PanelExtensionRoutesConfig): () => void {
   const register: PanelExtensionHost['webServer']['register'] = route => host.webServer.register({
     ...route,
-    handler: withConnectionAuth(host.connection, route.handler),
+    handler: withConnectionAuth(host.connection, route.handler, 'dsh-tauri-panel-extension'),
   })
   const disposers = [
     register({

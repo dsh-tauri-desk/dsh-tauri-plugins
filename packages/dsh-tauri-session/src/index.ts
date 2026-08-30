@@ -27,8 +27,8 @@ import { readdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import process from 'node:process'
+import { routeHandler, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
 import { SESSION_API_PREFIX, SESSION_ARCHIVE_FILE, SESSION_PLUGIN_NAME } from './constants.js'
-import { routeHandler, withConnectionAuth } from './http.js'
 import { loadArchive, saveArchive, sessionStateDir } from './storage.js'
 
 /** 插件名（诊断元数据，与导出的 name 一致）。 */
@@ -446,7 +446,7 @@ export function buildRoutes(ctx: HostContext, dshHome: string): any[] {
   ]
   return routes.map(route => ({
     ...route,
-    handler: withConnectionAuth(ctx.connection, route.handler),
+    handler: withConnectionAuth(ctx.connection, route.handler, 'dsh-tauri-session'),
   }))
 }
 

@@ -217,6 +217,9 @@ importers:
       dompurify:
         specifier: catalog:ui
         version: 3.4.14
+      dsh-tauri-utils:
+        specifier: workspace:*
+        version: link:../dsh-tauri-utils
       marked:
         specifier: catalog:ui
         version: 18.0.11
@@ -229,9 +232,17 @@ importers:
 
   packages/dsh-tauri-panel-placeholder: {}
 
-  packages/dsh-tauri-rightclick: {}
+  packages/dsh-tauri-rightclick:
+    dependencies:
+      dsh-tauri-utils:
+        specifier: workspace:*
+        version: link:../dsh-tauri-utils
 
-  packages/dsh-tauri-session: {}
+  packages/dsh-tauri-session:
+    dependencies:
+      dsh-tauri-utils:
+        specifier: workspace:*
+        version: link:../dsh-tauri-utils
 
   packages/dsh-tauri-tsdown:
     devDependencies:
@@ -244,7 +255,13 @@ importers:
 
   packages/dsh-tauri-ui: {}
 
-  packages/dsh-tauri-worktree: {}
+  packages/dsh-tauri-utils: {}
+
+  packages/dsh-tauri-worktree:
+    dependencies:
+      dsh-tauri-utils:
+        specifier: workspace:*
+        version: link:../dsh-tauri-utils
 
 packages:
 

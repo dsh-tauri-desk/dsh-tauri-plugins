@@ -29,6 +29,7 @@ export const dshExternal = [
   'react-dom',
   'react-dom/client',
   'dsh-tauri',
+  'dsh-tauri-utils',
   'dsh-tauri/client',
   /^@deepseek-ai\//,
 ]
