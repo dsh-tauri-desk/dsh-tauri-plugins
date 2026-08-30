@@ -183,18 +183,18 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     })
   }
 
-  /** 替换菜单条目文案（优先 itemLabel 子节点，回退文本节点/追加）。 */
-  function setItemLabel(item: HTMLElement, label: string): void {
+  /**
+   * 替换菜单条目文案。返回是否找到官方 label 节点 —— 找不到（非官方 primitives
+   * 结构，如其他插件的自绘菜单按钮）时返回 false，调用方中止 patch，绝不追加
+   * 文本节点造成「删除工作区归档工作区」式粘连。
+   */
+  function setItemLabel(item: HTMLElement, label: string): boolean {
     const labelNode = item.querySelector<HTMLElement>('[class*="itemLabel"], [class*="label"]')
     if (labelNode) {
       labelNode.textContent = label
-      return
+      return true
     }
-    const textNode = [...item.childNodes].find(node => node.nodeType === Node.TEXT_NODE)
-    if (textNode)
-      textNode.textContent = label
-    else
-      item.append(document.createTextNode(label))
+    return false
   }
 
   /**
@@ -209,7 +209,9 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     menu.setAttribute(WORKSPACE_MENU_PATCH_ATTRIBUTE, '1')
 
     const archiveItem = item.cloneNode(true) as HTMLButtonElement
-    setItemLabel(archiveItem, text('archiveWorkspaceMenu'))
+    // 克隆的文案替换失败（条目不是官方 primitives 结构）时不插入，避免文本粘连。
+    if (!setItemLabel(archiveItem, text('archiveWorkspaceMenu')))
+      return
     const icon = archiveItem.querySelector<HTMLElement>('[class*="itemIcon"]')
     if (icon)
       icon.innerHTML = ARCHIVE_ICON_SVG
@@ -275,6 +277,11 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     for (const item of document.querySelectorAll<HTMLButtonElement>(MENU_ITEM_SELECTOR)) {
       const label = item.textContent?.trim() ?? ''
       if (!label)
+        continue
+      // 只处理官方 primitives 菜单条目：官方条目由 `itemWrap` 包裹，其他插件
+      // （如右键菜单）自绘的 `button[role=menuitem]` 没有该结构 —— 误 patch
+      // 会把克隆项插进别人的菜单并在文案替换失败时造成文本粘连（#235）。
+      if (!item.closest('[class*="itemWrap"]'))
         continue
       if (DELETE_WORKSPACE_LABELS.includes(label) || DELETE_WORKSPACE_LABELS.some(needle => label.includes(needle)))
         patchWorkspaceMenu(item)

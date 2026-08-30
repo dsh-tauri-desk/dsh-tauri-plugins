@@ -103,4 +103,33 @@ describe('workspaceFromRow', () => {
     expect(workspaceFromRow(row, workspacesRuntime([untitled]))).toBeNull()
     row.remove()
   })
+
+  it('ignores other plugins menu buttons (no official itemWrap structure)', async () => {
+    // 模拟 rightclick 插件的右键菜单：自绘按钮，无官方 primitives 的 itemWrap 包裹。
+    // scan 误 patch 会把克隆项插进别人的菜单，且文案替换失败时造成文本粘连（#235）。
+    const ctxMenu = document.createElement('div')
+    ctxMenu.setAttribute('role', 'menu')
+    ctxMenu.className = 'dsh-tauri-rightclick'
+    const deleteBtn = document.createElement('button')
+    deleteBtn.type = 'button'
+    deleteBtn.setAttribute('role', 'menuitem')
+    deleteBtn.className = 'dsh-tauri-rightclick-item'
+    const span = document.createElement('span')
+    span.textContent = '删除工作区'
+    deleteBtn.appendChild(span)
+    ctxMenu.appendChild(deleteBtn)
+    document.body.appendChild(ctxMenu)
+
+    const { installWorkspaceArchivePatch } = await import('./workspace-patch')
+    const dispose = installWorkspaceArchivePatch(
+      workspacesRuntime([{ workspaceId: 'w1', title: 'Minecraft', path: 'C:/minecraft', sessionIds: ['session-1'] }]),
+      { list: { subscribe: () => () => {}, getSnapshot: () => ({ ids: [], byId: {} }) } } as never,
+    )
+    await new Promise(resolve => setTimeout(resolve, 50))
+    // 右键菜单按钮保持原样：不插入克隆、不粘连。
+    expect(deleteBtn.textContent?.trim()).toBe('删除工作区')
+    expect(ctxMenu.querySelectorAll('button').length).toBe(1)
+    dispose()
+    document.body.innerHTML = ''
+  })
 })
