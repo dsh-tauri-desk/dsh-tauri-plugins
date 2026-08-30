@@ -43,7 +43,17 @@ const DICT_ZH = {
   linkCopied: '已复制链接',
   noWorkspaceSessions: '该工作区没有可归档的会话',
   noUngroupedSessions: '未分组中没有可归档的正式会话',
-  archiveWorkspaceConfirm: '归档“{title}”中的 {count} 个会话？',
+  archiveWorkspaceTitle: '归档 {count} 个会话？',
+  archiveWorkspaceDescription: '这会将 {workspace} 中的会话归档。之后你可以在已归档的会话中找到它们',
+  archiveWorkspaceConfirmAction: '全部归档',
+  archiveUngroupedTitle: '归档未分组中的 {count} 个会话？',
+  archiveUngroupedDescription: '这会归档未分组中的全部正式会话',
+  deleteWorkspace: '删除工作区',
+  deleteWorkspaceTitle: '删除工作区？',
+  deleteWorkspaceDescription: '将把“{title}”从工作区列表中移除。文件夹与会话记录会保留，其会话将显示在“未分组”下。',
+  deleteWorkspaceConfirm: '删除',
+  workspaceDeleted: '工作区已删除',
+  cancel: '取消',
   workspaceSessionsArchived: '已归档 {count} 个会话',
   officialSessionActionUnavailable: '当前会话尚未提供该官方操作',
   officialWorkspaceActionUnavailable: '找不到官方工作区操作',
@@ -63,7 +73,6 @@ const DICT_ZH = {
   sessionServiceUnavailable: '无法取得官方会话服务',
   renameFailed: '重命名失败',
   editPositionUnknown: '无法确定编辑位置',
-  archiveUngroupedConfirm: '归档未分组中的 {count} 个会话？',
 } as const satisfies Record<LocaleKey, string>
 
 /** en 字典，与 zh 键集完全一致（locale 运行时强制双语平衡）。 */
@@ -100,7 +109,17 @@ const DICT_EN: Record<LocaleKey, string> = {
   linkCopied: 'Link copied',
   noWorkspaceSessions: 'This workspace has no sessions to archive',
   noUngroupedSessions: 'Ungrouped has no formal sessions to archive',
-  archiveWorkspaceConfirm: 'Archive {count} sessions in “{title}”?',
+  archiveWorkspaceTitle: 'Archive {count} sessions?',
+  archiveWorkspaceDescription: 'This will archive the sessions in {workspace}. You can find them in Archived sessions afterwards.',
+  archiveWorkspaceConfirmAction: 'Archive all',
+  archiveUngroupedTitle: 'Archive {count} sessions in Ungrouped?',
+  archiveUngroupedDescription: 'This will archive all formal sessions in Ungrouped.',
+  deleteWorkspace: 'Delete workspace',
+  deleteWorkspaceTitle: 'Delete workspace?',
+  deleteWorkspaceDescription: 'This removes “{title}” from the workspace list. The folder and session logs will be kept. Its sessions will appear under Ungrouped.',
+  deleteWorkspaceConfirm: 'Delete',
+  workspaceDeleted: 'Workspace deleted',
+  cancel: 'Cancel',
   workspaceSessionsArchived: 'Archived {count} sessions',
   officialSessionActionUnavailable: 'The official action is not available for this session',
   officialWorkspaceActionUnavailable: 'Official workspace actions could not be found',
@@ -120,7 +139,6 @@ const DICT_EN: Record<LocaleKey, string> = {
   sessionServiceUnavailable: 'Official session service is unavailable',
   renameFailed: 'Rename failed',
   editPositionUnknown: 'Could not determine the editing position',
-  archiveUngroupedConfirm: 'Archive {count} sessions in Ungrouped?',
 }
 
 /** 活跃语言 id（module 级缓存，apply 时初始化并由订阅推进）。 */

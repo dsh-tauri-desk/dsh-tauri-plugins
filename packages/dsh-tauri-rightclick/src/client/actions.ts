@@ -8,6 +8,7 @@ import type {
   WorkspacesRuntimeLike,
   WorkspaceViewLike,
 } from './types'
+import { confirmDialog } from './confirm-dialog'
 import { HOST_OPEN_PATH_ENDPOINT, OPEN_URL_ROUTE } from './constants'
 import { toast } from './dialog'
 import { text } from './locale'
@@ -141,7 +142,7 @@ export async function forkSession(
   sessions.open(childId)
 }
 
-/** 归档整个工作区（跳过已归档的会话，确认后逐个归档）。 */
+/** 归档整个工作区（跳过已归档的会话，客户端样式确认后逐个归档）。 */
 export async function archiveUngroupedSessions(workspaces: WorkspacesRuntimeLike, sessions: SessionsRuntimeLike): Promise<void> {
   const snapshot = workspaces.list.getSnapshot()
   const archived = new Set(snapshot.archivedSessionIds)
@@ -155,15 +156,19 @@ export async function archiveUngroupedSessions(workspaces: WorkspacesRuntimeLike
     toast(text('noUngroupedSessions'))
     return
   }
-  // eslint-disable-next-line no-alert
-  if (!globalThis.confirm(text('archiveUngroupedConfirm', { count: sessionIds.length })))
+  const ok = await confirmDialog({
+    title: text('archiveUngroupedTitle', { count: sessionIds.length }),
+    description: text('archiveUngroupedDescription', { count: sessionIds.length }),
+    confirmLabel: text('archiveWorkspaceConfirmAction'),
+  })
+  if (!ok)
     return
   for (const id of sessionIds)
     await workspaces.archiveSession(id)
   toast(text('workspaceSessionsArchived', { count: sessionIds.length }))
 }
 
-/** 归档整个工作区（跳过已归档的会话，确认后逐个归档）。 */
+/** 归档整个工作区（跳过已归档的会话，客户端样式确认后逐个归档）。 */
 export async function archiveWorkspaceSessions(workspaces: WorkspacesRuntimeLike, workspace: WorkspaceViewLike): Promise<void> {
   const archived = new Set(workspaces.list.getSnapshot().archivedSessionIds)
   const sessionIds = workspace.sessionIds.filter(id => !archived.has(id))
@@ -171,11 +176,27 @@ export async function archiveWorkspaceSessions(workspaces: WorkspacesRuntimeLike
     toast(text('noWorkspaceSessions'))
     return
   }
-  // 原生 confirm：工作区批量归档确认（与源插件行为一致，不引入额外弹窗组件）。
-  // eslint-disable-next-line no-alert
-  if (!globalThis.confirm(text('archiveWorkspaceConfirm', { title: workspace.title, count: sessionIds.length })))
+  const ok = await confirmDialog({
+    title: text('archiveWorkspaceTitle', { count: sessionIds.length }),
+    description: text('archiveWorkspaceDescription', { workspace: workspace.title }),
+    confirmLabel: text('archiveWorkspaceConfirmAction'),
+  })
+  if (!ok)
     return
   for (const id of sessionIds)
     await workspaces.archiveSession(id)
   toast(text('workspaceSessionsArchived', { count: sessionIds.length }))
+}
+
+/** 删除工作区（官方非破坏性删除：仅移除注册，文件夹与会话记录保留，会话归入未分组）。 */
+export async function deleteWorkspaceAction(workspaces: WorkspacesRuntimeLike, workspace: WorkspaceViewLike): Promise<void> {
+  const ok = await confirmDialog({
+    title: text('deleteWorkspaceTitle'),
+    description: text('deleteWorkspaceDescription', { title: workspace.title }),
+    confirmLabel: text('deleteWorkspaceConfirm'),
+  })
+  if (!ok)
+    return
+  await workspaces.delete(workspace.workspaceId)
+  toast(text('workspaceDeleted'))
 }

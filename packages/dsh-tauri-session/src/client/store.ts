@@ -17,7 +17,7 @@ import { text } from './locale'
 
 export type { ArchivedListPayload, ArchiveUiState } from './types'
 
-/** 从 unknown 错误里取可展示文本。 */
+/** 从 unknown 错误里取可展示文本（Error 取 message，其余字符串化）。 */
 function errMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -116,26 +116,46 @@ export function useArchiveUi(): ArchiveUiState {
   return useSyncExternalStore(archiveStore.subscribe, archiveStore.getSnapshot)
 }
 
+/** 归档页排序方式（更新时间 / 创建时间 / 标题）。 */
 export function setSort(sort: ArchiveSort): void {
   archiveStore.set(state => ({ ...state, sort }))
 }
 
+/** 归档页搜索关键字。 */
 export function setQuery(query: string): void {
   archiveStore.set(state => ({ ...state, query }))
 }
 
+/** 归档页项目筛选（'all' 显示全部组）。 */
 export function setWorkspaceFilter(workspaceId: string): void {
   archiveStore.set(state => ({ ...state, workspaceId }))
 }
 
-/** 拉取归档载荷并写入 store。 */
+/** 归档刷新代数：只允许最新一次刷新的响应写回 store（过期响应整体丢弃）。 */
+let refreshGeneration = 0
+
+/**
+ * 拉取归档载荷并写入 store。
+ *
+ * 刷新成功后清空抑制标记：抑制只服务于「变更 → 刷新」窗口内的幽灵行
+ * （宿主归档集合在变更后短暂含过期 id）。刷新成功即载荷权威，若保留抑制，
+ * 取消归档后再归档的会话会被旧标记永久过滤出归档页（#235）。
+ *
+ * 并发保护：每次调用推进代数，只有仍是最新代数的响应才写回 —— 否则慢的旧
+ * 响应会覆盖新数据，或把刚写入的抑制标记清掉（幽灵行提前闪现）。
+ */
 export async function refreshArchived(): Promise<void> {
+  const generation = ++refreshGeneration
   archiveStore.set(state => ({ ...state, loading: true, error: '' }))
   try {
     const archived = await fetchArchived()
-    archiveStore.set(state => ({ ...state, archived, loading: false }))
+    if (generation !== refreshGeneration)
+      return
+    archiveStore.set(state => ({ ...state, archived, loading: false, suppressedSessionIds: [] }))
   }
   catch (error) {
+    if (generation !== refreshGeneration)
+      return
     archiveStore.set(state => ({ ...state, loading: false, error: errMessage(error) }))
   }
 }

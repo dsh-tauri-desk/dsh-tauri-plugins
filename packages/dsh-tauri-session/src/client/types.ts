@@ -89,6 +89,8 @@ export interface SessionSummaryLike {
   cwd?: string
   updatedAt?: number
   blank?: boolean
+  /** Session provenance; official sidebar hides subagent sessions. */
+  origin?: string
 }
 
 export interface SessionListSnapshot {
@@ -147,6 +149,7 @@ export type LocaleKey
     | 'deleteProjectTitle'
     | 'deleteProjectBody'
     | 'archiveWorkspace'
+    | 'archiveWorkspaceMenu'
     | 'archiveWorkspaceTitle'
     | 'archiveWorkspaceDescription'
     | 'archiveWorkspaceConfirm'

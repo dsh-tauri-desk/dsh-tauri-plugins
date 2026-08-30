@@ -17,7 +17,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
  */
 import type { ClientContext } from 'dsh-tauri/client'
 import { SlotOutlet } from '@deepseek-ai/dsh-client-ui-renderer'
-import { compat } from 'dsh-tauri/client'
 import { installPanelLocale } from './locale'
 import { installPanelService } from './service'
 import { installSidebarRoot } from './sidebar'
@@ -30,15 +29,20 @@ export type { PanelActionItemProps, PanelContentSpec, SidebarRootProps } from '.
 /** 插件显示名（诊断元数据）。 */
 export const name = 'dsh-tauri-panel'
 
-/** 需要的客户端服务：slots（注册点位）、layout（折叠/宽度）、workspaces（新会话）、locale（双语文案）。 */
-export const inject = ['slots', 'layout', 'workspaces', 'locale']
+/**
+ * 需要的客户端服务：slots（注册点位）、layout（折叠/宽度）、locale（双语文案）。
+ *
+ * `workspaces` 不能列为强制注入：Alpha 将会话导航放在 `uiWorkspace`，而
+ * rc.2 才把 `startSession` 暴露在 `workspaces` 上。运行时差异由 compat(ctx)
+ * 在 apply 内探测，避免 Alpha 在执行 apply 前因缺少 workspaces 而被 Cordis 跳过。
+ */
+export const inject = ['slots', 'layout', 'locale']
 
 /**
  * 插件体：注册面板侧栏（整槽替换）。
  * @param ctx - 客户端根上下文。
  */
 export function apply(ctx: ClientContext): void {
-  const cx = compat(ctx)
   ctx.effect(
     () => mountPanelStyles(),
     'dsh-tauri-panel: styles',
@@ -57,5 +61,5 @@ export function apply(ctx: ClientContext): void {
     return
   }
 
-  installSidebarRoot(cx)
+  installSidebarRoot(ctx)
 }
