@@ -49,11 +49,12 @@
     }
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && pnpm run test:bundle",
     "dev": "tsdown --watch",
     "prepublishOnly": "nr build",
     "start": "tsx src/index.ts",
     "test": "vitest",
+    "test:bundle": "node scripts/check-client-bundle.mjs",
     "typecheck": "tsc"
   },
   "devDependencies": {
