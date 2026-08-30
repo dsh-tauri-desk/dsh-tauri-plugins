@@ -1,9 +1,9 @@
 import { Buffer } from 'node:buffer'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve, sep } from 'node:path'
+import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { buildRoutes, encodeSessionId, isWithinSessionsRoot, updateRegistryArchiveSet } from './index'
+import { buildRoutes, updateRegistryArchiveSet } from './index'
 
 const allowConnection = { requestRejection: () => undefined }
 
@@ -127,30 +127,6 @@ describe('updateRegistryArchiveSet', () => {
   })
 })
 
-describe('isWithinSessionsRoot', () => {
-  const root = resolve('dsh-home', 'sessions')
-
-  it('accepts direct and nested session directories below the root', () => {
-    expect(isWithinSessionsRoot(root, `${root}${sep}session-abc`)).toBe(true)
-    expect(isWithinSessionsRoot(root, `${root}${sep}--group--${sep}session-abc`)).toBe(true)
-  })
-
-  it('rejects traversal and absolute escapes', () => {
-    expect(isWithinSessionsRoot(root, `${root}${sep}..`)).toBe(false)
-    expect(isWithinSessionsRoot(root, resolve('dsh-home'))).toBe(false)
-    expect(isWithinSessionsRoot(root, resolve('..'))).toBe(false)
-  })
-})
-
-describe('encodeSessionId', () => {
-  it('escapes unsafe code units like the JSONL backend', () => {
-    expect(encodeSessionId('..')).toBe('~002E~002E')
-    expect(encodeSessionId('.')).toBe('~002E')
-    expect(encodeSessionId('a/b')).toBe('a~002Fb')
-    expect(encodeSessionId('plain-id')).toBe('plain-id')
-  })
-})
-
 describe('session routes', () => {
   it.each([
     ['/api/dsh-session/delete', { sessionId: 's1' }],
@@ -162,14 +138,13 @@ describe('session routes', () => {
     mkdirSync(dirname(sentinel), { recursive: true })
     writeFileSync(sentinel, 'sentinel\n')
 
-    const remove = vi.fn(() => true)
     const enqueueOperation = vi.fn(async () => {})
     const setState = vi.fn(async () => {})
     const update = vi.fn(async () => {})
     const info = vi.fn()
     const ctx = {
       connection: allowConnection,
-      sessions: { get: () => ({ id: 's1' }), remove },
+      sessions: { get: () => ({ id: 's1' }) },
       workspaceRegistry: {
         archivedSessionIds: ['s1'],
         enqueueOperation,
@@ -187,7 +162,6 @@ describe('session routes', () => {
 
       expect(res.code).toBe(503)
       expect(JSON.parse(res.payload).error).toContain('永久删除已暂时禁用')
-      expect(remove).not.toHaveBeenCalled()
       expect(enqueueOperation).not.toHaveBeenCalled()
       expect(setState).not.toHaveBeenCalled()
       expect(update).not.toHaveBeenCalled()

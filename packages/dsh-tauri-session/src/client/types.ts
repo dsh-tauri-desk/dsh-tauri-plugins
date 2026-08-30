@@ -77,8 +77,6 @@ export interface SessionsRuntimeLike {
     subscribe: (listener: () => void) => () => void
     getSnapshot: () => SessionListSnapshot
   }
-  /** Refresh the in-memory session-list projection when the host changes it. */
-  refresh?: () => Promise<void>
 }
 
 export interface SessionSummaryLike {
@@ -130,7 +128,6 @@ export interface WorkspaceListSnapshot {
 export type LocaleKey
   = | 'section'
     | 'archiveTitle'
-    | 'deleteAll'
     | 'searchPlaceholder'
     | 'sortLabel'
     | 'sortUpdatedAt'
@@ -143,22 +140,12 @@ export type LocaleKey
     | 'noResults'
     | 'loadFailed'
     | 'chats'
-    | 'groupMenuAria'
-    | 'deleteProjectChats'
-    | 'deleteProjectTitle'
-    | 'deleteProjectBody'
     | 'archiveWorkspace'
     | 'archiveWorkspaceMenu'
     | 'archiveWorkspaceTitle'
     | 'archiveWorkspaceDescription'
     | 'archiveWorkspaceConfirm'
     | 'cancel'
-    | 'deleteConfirm'
-    | 'deleteRowAria'
-    | 'deleteSingleTitle'
-    | 'deleteSingleBody'
-    | 'deleteAllTitle'
-    | 'deleteAllBody'
     | 'loading'
     | 'unarchivedToast'
     | 'view'
