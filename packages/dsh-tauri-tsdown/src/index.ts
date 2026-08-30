@@ -67,6 +67,9 @@ export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
       outExtensions: () => ({ js: '.cjs' }),
       define: { 'process.env.NODE_ENV': JSON.stringify('production') },
       ...clientBundleRegistration(),
+      // The client entry is deliberately a classic CJS script wrapped by ModuleLoader;
+      // publint's ESM/CJS default-export heuristic is inapplicable.
+      publint: false,
       dts: false,
       sourcemap: true,
       // minify: true,

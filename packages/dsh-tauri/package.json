@@ -23,7 +23,8 @@
     ".": "./dist/index.js",
     "./client": {
       "types": "./dist/client.d.cts",
-      "default": "./dist/client.cjs"
+      "import": "./dist/client.cjs",
+      "require": "./dist/client.cjs"
     },
     "./package.json": "./package.json"
   },
