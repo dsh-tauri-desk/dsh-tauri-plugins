@@ -28,6 +28,7 @@ vi.mock('@deepseek-ai/dsh-client-ui-primitives', () => ({
   Modal: () => null,
 }))
 
+/** 构造一个工作区项目行（role=treeitem + 标题 span，可带 aria-label/title）。 */
 function workspaceRow(title: string, opts: { ariaLabel?: string, titleAttr?: string } = {}): Element {
   const row = document.createElement('div')
   row.setAttribute('role', 'treeitem')
@@ -44,6 +45,7 @@ function workspaceRow(title: string, opts: { ariaLabel?: string, titleAttr?: str
   return row
 }
 
+/** 构造最小 workspaces 运行时（固定 items + 空归档集合）。 */
 function workspacesRuntime(items: WorkspaceViewLike[]): WorkspacesRuntimeLike {
   return {
     list: {

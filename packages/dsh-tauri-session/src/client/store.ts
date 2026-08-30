@@ -17,7 +17,7 @@ import { text } from './locale'
 
 export type { ArchivedListPayload, ArchiveUiState } from './types'
 
-/** 从 unknown 错误里取可展示文本。 */
+/** 从 unknown 错误里取可展示文本（Error 取 message，其余字符串化）。 */
 function errMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }

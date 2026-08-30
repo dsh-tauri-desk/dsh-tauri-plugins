@@ -112,6 +112,7 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
   /** 行「…」按钮清理器：与按钮元素关联，行被官方替换后即被丢弃。 */
   const rowCleanups: Array<{ element: HTMLElement, cleanup: () => void }> = []
 
+  /** 关闭归档确认对话框并清理宿主节点（幂等）。 */
   function closeDialog(): void {
     dialogRoot?.unmount()
     dialogRoot = undefined
@@ -257,7 +258,10 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
     })
   }
 
-  /** 全量扫描：项目行记录监听 + portal 菜单追加归档条目。 */
+  /**
+   * 全量扫描：项目行记录监听 + portal 菜单追加归档条目。
+   * MutationObserver 每次 DOM 变化都会触发；guard 属性保证每项只处理一次。
+   */
   function scan(): void {
     // 丢弃已脱离文档的菜单条目/行清理器，避免数组随菜单反复开关、行被官方
     // 替换而无限增长（脱离文档的监听器随元素 GC，无需逐个执行 cleanup）。
@@ -291,6 +295,7 @@ export function installWorkspaceArchivePatch(workspacesRuntime: WorkspacesRuntim
   const ro = new MutationObserver(scan)
   let timer: ReturnType<typeof setInterval> | undefined
   let tries = 0
+  /** 首次挂载：侧边栏就绪后开始观察并执行首轮扫描；未就绪时由调用方轮询重试。 */
   function attach(): boolean {
     const sidebar = document.querySelector<HTMLElement>(SIDEBAR_SELECTOR)
     if (!sidebar)
