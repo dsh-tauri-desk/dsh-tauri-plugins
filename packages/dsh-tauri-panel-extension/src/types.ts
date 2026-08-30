@@ -11,6 +11,11 @@ export interface WebServerService {
   }) => () => void
 }
 
+/** DSH Connection's browser trust and authentication boundary. */
+export interface ConnectionGate {
+  requestRejection: (request: IncomingMessage) => 401 | 403 | undefined
+}
+
 /** One skill as the host registry reports it (SkillSummary subset). */
 export interface HostSkill {
   readonly name: string
@@ -52,4 +57,5 @@ export interface SkillRepositoryMetadata {
 export interface PanelExtensionHost {
   webServer: WebServerService
   skills: SkillsService
+  connection: ConnectionGate
 }

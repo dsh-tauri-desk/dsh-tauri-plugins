@@ -34,9 +34,9 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
+import { routeHandler, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
 import { WORKTREE_API_PREFIX, WORKTREE_BRANCH_NAME_PATTERN, WORKTREE_SECTION_ORDER } from './constants.js'
 import { applyStagedPatch, carryStagedChanges, git, gitToplevel, headSubject, projectDirname, shortHead, stagedPatch } from './git.js'
-import { routeHandler } from './http.js'
 import {
   clearPendingCheckoutContext,
   loadCheckoutContextsSync,
@@ -57,7 +57,7 @@ export const name = 'dsh-tauri-worktree'
  *   sessions         当前会话枚举/查找（绑定工作树）
  *   workspaceRegistry注册工作树为 DSH 工作区（可选，增强归类）
  */
-export const inject = ['tools', 'systemPrompt', 'webServer', 'sessions', 'workspaceRegistry', 'agents']
+export const inject = ['tools', 'systemPrompt', 'webServer', 'sessions', 'workspaceRegistry', 'agents', 'connection']
 
 /** API 路由前缀（客户端同源 fetch）。 */
 export const API_PREFIX = WORKTREE_API_PREFIX
@@ -793,7 +793,7 @@ export function createToolSet(
 export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
   const worktreesRoot = config.worktreesRoot || join(homedir(), '.dsh')
 
-  return [
+  const routes = [
     {
       kind: 'exact',
       path: `${API_PREFIX}/status`,
@@ -908,6 +908,10 @@ export function buildRoutes(ctx: HostContext, config: PluginConfig): any[] {
       }, { mutate: true }),
     },
   ]
+  return routes.map(route => ({
+    ...route,
+    handler: withConnectionAuth(ctx.connection, route.handler, 'dsh-tauri-worktree'),
+  }))
 }
 
 // ---------------------------------------------------------------------------

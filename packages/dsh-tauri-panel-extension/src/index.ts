@@ -37,7 +37,7 @@ export interface Config {
   profile?: string
 }
 
-export const inject = ['webServer', 'skills']
+export const inject = ['webServer', 'skills', 'connection']
 
 /** The provider plugin's structural shape (name/apply export). */
 interface FilesystemSkillPlugin {
@@ -64,7 +64,7 @@ interface PluginFiber {
 
 export function apply(ctx: Context, config?: Config): void {
   const profile = config?.profile ?? argvProfile() ?? 'web'
-  ctx.inject(['webServer', 'skills'], (hostCtx: Context) => {
+  ctx.inject(['webServer', 'skills', 'connection'], (hostCtx: Context) => {
     // The web bundle disables the host-plane `skill-filesystem` row on
     // purpose (presets own per-session discovery). The Settings manager
     // mounts its own host-plane provider as a CHILD of this plugin: it dies
