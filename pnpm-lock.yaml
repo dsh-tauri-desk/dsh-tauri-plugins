@@ -221,9 +221,6 @@ importers:
       dompurify:
         specifier: catalog:ui
         version: 3.4.14
-      dsh-tauri:
-        specifier: workspace:*
-        version: link:../dsh-tauri
       marked:
         specifier: catalog:ui
         version: 18.0.11
@@ -233,6 +230,10 @@ importers:
       yaml:
         specifier: catalog:testing
         version: 2.8.2
+    devDependencies:
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
 
   packages/dsh-tauri-panel-placeholder:
     devDependencies:
