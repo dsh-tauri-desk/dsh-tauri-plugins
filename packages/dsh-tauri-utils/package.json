@@ -1,7 +1,7 @@
 {
   "name": "dsh-tauri-utils",
   "type": "module",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "description": "Shared host-side utilities for DeepSeek Harness Tauri plugins.",
   "author": "Hairyf <wwu710632@gmail.com>",

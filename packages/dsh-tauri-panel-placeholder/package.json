@@ -1,7 +1,7 @@
 {
   "name": "dsh-tauri-panel-placeholder",
   "type": "module",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "private": true,
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
