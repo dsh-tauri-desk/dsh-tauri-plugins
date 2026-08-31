@@ -8,7 +8,7 @@ import type { HostSkill, PanelExtensionHost, SkillRepositoryMetadata } from './t
 import { mkdirSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 import process from 'node:process'
-import { readJsonBody, sameOrigin, sendJson, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
+import { readJsonBody, sameOrigin, sendJson, withConnectionAuth } from 'dsh-tauri'
 import { scanAllMcp } from './agents.ts'
 import { API_PREFIX } from './constants.ts'
 import { listMcp, removeMcp, setMcpDisabled, upsertMcp, validateMcpInput } from './mcp.ts'

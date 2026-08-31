@@ -34,7 +34,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
-import { routeHandler, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
+import { routeHandler, withConnectionAuth } from 'dsh-tauri'
 import { WORKTREE_API_PREFIX, WORKTREE_BRANCH_NAME_PATTERN, WORKTREE_SECTION_ORDER } from './constants.js'
 import { applyStagedPatch, carryStagedChanges, git, gitToplevel, headSubject, projectDirname, shortHead, stagedPatch } from './git.js'
 import {

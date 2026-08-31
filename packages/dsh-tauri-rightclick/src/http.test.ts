@@ -1,7 +1,7 @@
 import { once } from 'node:events'
 import { createServer, request as sendHttpRequest } from 'node:http'
+import { isSameOriginJsonRequest, withConnectionAuth } from 'dsh-tauri'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { isSameOriginJsonRequest, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
 
 const servers: ReturnType<typeof createServer>[] = []
 

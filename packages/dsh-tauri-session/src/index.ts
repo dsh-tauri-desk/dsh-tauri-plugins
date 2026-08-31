@@ -27,7 +27,7 @@ import { readdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve, sep } from 'node:path'
 import process from 'node:process'
-import { routeHandler, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
+import { routeHandler, withConnectionAuth } from 'dsh-tauri'
 import { SESSION_API_PREFIX, SESSION_ARCHIVE_FILE, SESSION_PLUGIN_NAME } from './constants.js'
 import { loadArchive, saveArchive, sessionStateDir } from './storage.js'
 
