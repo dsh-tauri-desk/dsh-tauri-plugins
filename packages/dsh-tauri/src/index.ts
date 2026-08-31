@@ -23,9 +23,12 @@ const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' }
 const DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 
 /** Apply DSH's browser trust and authentication boundary before route logic. */
-export function withConnectionAuth(connection: ConnectionGate | undefined, handler: RouteHandler, _pluginName = 'dsh-tauri-plugin'): RouteHandler {
-  if (typeof connection?.requestRejection !== 'function')
-    return handler
+export function withConnectionAuth(connection: ConnectionGate | undefined, handler: RouteHandler, pluginName = 'dsh-tauri-plugin'): RouteHandler {
+  if (typeof connection?.requestRejection !== 'function') {
+    return (_request, response) => sendJson(response, 503, {
+      error: `${pluginName} requires the DSH connection authentication gate`,
+    })
+  }
   return async (request, response) => {
     const rejection = connection.requestRejection(request)
     if (rejection !== undefined) {

@@ -79,13 +79,34 @@ describe('withConnectionAuth', () => {
     expect(next).not.toHaveBeenCalled()
   })
 
-  it('preserves an authenticated request and fails closed without the gate', async () => {
+  it('preserves an authenticated request', async () => {
     const next = vi.fn()
     const handler = withConnectionAuth({ requestRejection: () => undefined }, next)
     const req = request()
     const res = {}
     await handler(req, res as never)
     expect(next).toHaveBeenCalledWith(req, res)
-    expect(() => withConnectionAuth(undefined, next)).toThrow('authentication gate')
+  })
+
+  it.each([
+    ['absent', undefined],
+    ['missing its method', {}],
+    ['using a non-function method', { requestRejection: null }],
+  ])('returns 503 without invoking route logic when the gate is %s', async (_description, connection) => {
+    const next = vi.fn()
+    const handler = withConnectionAuth(connection as never, next, 'dsh-tauri-rightclick')
+    const req = request()
+    const res = {
+      end: vi.fn(),
+      writeHead: vi.fn(),
+    }
+
+    await handler(req, res as never)
+
+    expect(res.writeHead).toHaveBeenCalledWith(503, { 'content-type': 'application/json; charset=utf-8' })
+    expect(res.end).toHaveBeenCalledWith(JSON.stringify({
+      error: 'dsh-tauri-rightclick requires the DSH connection authentication gate',
+    }))
+    expect(next).not.toHaveBeenCalled()
   })
 })
