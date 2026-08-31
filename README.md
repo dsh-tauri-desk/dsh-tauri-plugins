@@ -1,5 +1,12 @@
 # dsh-tauri-plugins
 
+> [!WARNING]
+> **此仓库已废弃并归档，不再接收更新。**
+>
+> 内置插件已迁移至 [deepseek-harness-desktop](https://github.com/dsh-tauri-desk/deepseek-harness-desktop) 仓库的 `packages/` 目录，由桌面端在构建期通过 `pnpm deploy`（`scripts/build-plugins.ts` → `build:plugins`）自动打包进 `src-tauri/resources/node_modules`。
+>
+> 此仓库已进入**只读归档**状态。如需修改内置插件，请直接向桌面仓库 `packages/` 下的对应包提交 PR。
+
 为 [DeepSeek Harness](https://github.com/deepseek-ai/dsh) 提供 Tauri 桌面端能力的插件工作区。插件遵循 DSH 的 **host half / client half** 模型：宿主侧负责工具、路由和系统上下文，客户端负责 iframe 内的 UI 与消息桥接。
 
 ![dsh-tauri 插件工作区](public/overview.png)
