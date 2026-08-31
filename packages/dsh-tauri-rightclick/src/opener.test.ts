@@ -1,5 +1,5 @@
+import { safeWebUrl } from 'dsh-tauri'
 import { describe, expect, it } from 'vitest'
-import { safeWebUrl } from '../../dsh-tauri-utils/src/index.ts'
 
 describe('safeWebUrl', () => {
   it('accepts http/https URLs', () => {

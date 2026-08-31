@@ -9,7 +9,7 @@
  */
 
 import type { HostContext, HostRoute } from './types.js'
-import { isSameOriginJsonRequest, openUrl, readJsonBody, respond, safeWebUrl, withConnectionAuth } from '../../dsh-tauri-utils/src/index.ts'
+import { isSameOriginJsonRequest, openUrl, readJsonBody, respond, safeWebUrl, withConnectionAuth } from 'dsh-tauri'
 import {
   OPEN_URL_ROUTE,
   RIGHTCLICK_API_PREFIX,

@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: {
-      'dsh-tauri-utils': resolve(__dirname, 'packages/dsh-tauri-utils/src/index.ts'),
+      'dsh-tauri': resolve(__dirname, 'packages/dsh-tauri/src/index.ts'),
     },
   },
   test: {

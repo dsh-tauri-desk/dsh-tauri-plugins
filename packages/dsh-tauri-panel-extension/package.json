@@ -67,6 +67,7 @@
   "dependencies": {
     "@deepseek-ai/dsh-skill-filesystem": "catalog:dsh",
     "dompurify": "catalog:ui",
+    "dsh-tauri": "workspace:*",
     "marked": "catalog:ui",
     "smol-toml": "catalog:utils",
     "yaml": "catalog:testing"

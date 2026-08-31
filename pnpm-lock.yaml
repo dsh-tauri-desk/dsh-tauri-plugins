@@ -152,9 +152,6 @@ importers:
       dsh-tauri-tsdown:
         specifier: workspace:*
         version: link:packages/dsh-tauri-tsdown
-      dsh-tauri-utils:
-        specifier: workspace:*
-        version: link:packages/dsh-tauri-utils
       eslint:
         specifier: catalog:cli
         version: 9.39.2(jiti@2.6.1)
@@ -207,7 +204,11 @@ importers:
         specifier: catalog:testing
         version: 20.11.8
 
-  packages/dsh-tauri-panel: {}
+  packages/dsh-tauri-panel:
+    dependencies:
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
 
   packages/dsh-tauri-panel-extension:
     dependencies:
@@ -220,6 +221,9 @@ importers:
       dompurify:
         specifier: catalog:ui
         version: 3.4.14
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
       marked:
         specifier: catalog:ui
         version: 18.0.11
@@ -230,11 +234,23 @@ importers:
         specifier: catalog:testing
         version: 2.8.2
 
-  packages/dsh-tauri-panel-placeholder: {}
+  packages/dsh-tauri-panel-placeholder:
+    dependencies:
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
 
-  packages/dsh-tauri-rightclick: {}
+  packages/dsh-tauri-rightclick:
+    dependencies:
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
 
-  packages/dsh-tauri-session: {}
+  packages/dsh-tauri-session:
+    dependencies:
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
 
   packages/dsh-tauri-tsdown:
     devDependencies:
@@ -245,15 +261,17 @@ importers:
         specifier: catalog:cli
         version: 5.9.3
 
-  packages/dsh-tauri-ui: {}
-
-  packages/dsh-tauri-utils: {}
+  packages/dsh-tauri-ui:
+    dependencies:
+      dsh-tauri:
+        specifier: workspace:*
+        version: link:../dsh-tauri
 
   packages/dsh-tauri-worktree:
     dependencies:
-      dsh-tauri-utils:
+      dsh-tauri:
         specifier: workspace:*
-        version: link:../dsh-tauri-utils
+        version: link:../dsh-tauri
 
 packages:
 
