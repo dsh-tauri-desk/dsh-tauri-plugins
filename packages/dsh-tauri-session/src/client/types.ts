@@ -31,10 +31,10 @@ export interface ArchiveUiState {
   /** Selected project/workspace filter; 'all' shows every group. */
   workspaceId: string
   loading: boolean
-  /** A destructive/restore mutation is in flight (drives disabled + loading toast). */
+  /** An archive/restore mutation is in flight (drives disabled + loading toast). */
   pending: boolean
   error: string
-  /** IDs hidden optimistically after a successful restore/delete until host mirror catches up. */
+  /** IDs hidden optimistically after a successful restore until host mirror catches up. */
   suppressedSessionIds: string[]
   /** Titles observed before a session disappears from the filtered session list. */
   titleById: Record<string, string>
@@ -77,9 +77,6 @@ export interface SessionsRuntimeLike {
     subscribe: (listener: () => void) => () => void
     getSnapshot: () => SessionListSnapshot
   }
-  /** Open (navigate to) a session; used by the unarchive toast's 查看 action. */
-  /** Rebuild the in-memory session list after deleting persisted sessions. */
-  refresh?: () => Promise<void>
 }
 
 export interface SessionSummaryLike {
@@ -107,9 +104,9 @@ export interface WorkspacesRuntimeLike {
     getSnapshot: () => WorkspaceListSnapshot
   }
   /**
-   * Wire-truth owner behind the `list` projection. The plugin's unarchive/
-   * delete/clear mutations bypass the official unary actions (no changed
-   * frames are emitted), so callers re-sync the archive mirror via `refresh`.
+   * Wire-truth owner behind the `list` projection. The plugin's unarchive
+   * mutation bypasses the official unary actions (no changed frame is emitted),
+   * so callers re-sync the archive mirror via `refresh`.
    */
   manager?: {
     refresh?: () => Promise<void>
@@ -131,7 +128,6 @@ export interface WorkspaceListSnapshot {
 export type LocaleKey
   = | 'section'
     | 'archiveTitle'
-    | 'deleteAll'
     | 'searchPlaceholder'
     | 'sortLabel'
     | 'sortUpdatedAt'
@@ -144,22 +140,12 @@ export type LocaleKey
     | 'noResults'
     | 'loadFailed'
     | 'chats'
-    | 'groupMenuAria'
-    | 'deleteProjectChats'
-    | 'deleteProjectTitle'
-    | 'deleteProjectBody'
     | 'archiveWorkspace'
     | 'archiveWorkspaceMenu'
     | 'archiveWorkspaceTitle'
     | 'archiveWorkspaceDescription'
     | 'archiveWorkspaceConfirm'
     | 'cancel'
-    | 'deleteConfirm'
-    | 'deleteRowAria'
-    | 'deleteSingleTitle'
-    | 'deleteSingleBody'
-    | 'deleteAllTitle'
-    | 'deleteAllBody'
     | 'loading'
     | 'unarchivedToast'
     | 'view'

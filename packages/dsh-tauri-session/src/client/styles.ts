@@ -25,14 +25,6 @@ const archiveStyle = c([
     lineHeight: '32px',
     fontWeight: 600,
   }),
-  // 「全部删除」：红字 + hover 透明红底。官方 ghost hover 是单类 + :hover:not()
-  // 的同特异性选择器，靠样式表顺序不保险，这里叠加双类抬高特异性保证覆盖。
-  c(`.${K.deleteAll}`, {
-    color: 'var(--dsw-alias-state-error-primary, var(--dsw-alias-danger-text, inherit))',
-  }),
-  c(`.${K.deleteAll}.${K.deleteAll}:hover:not(:disabled)`, {
-    background: 'var(--dsw-alias-interactive-bg-hover-danger)',
-  }),
   c(`.${K.archiveMenuItem}`, {
     color: 'var(--dsw-alias-label-primary) !important',
     background: 'transparent !important',
@@ -124,23 +116,6 @@ const archiveStyle = c([
     color: 'var(--dsw-alias-label-secondary, var(--dsw-alias-label-primary))',
     marginLeft: 'auto',
   }),
-  c(`.${K.groupMenuTrigger}`, {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '20px',
-    height: '20px',
-    padding: 0,
-    border: 'none',
-    borderRadius: '6px',
-    background: 'transparent',
-    color: 'var(--dsw-alias-label-secondary)',
-    cursor: 'pointer',
-    fontSize: '18px',
-    lineHeight: '1',
-  }, [
-    c('&:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' }),
-  ]),
   // 重置 ul 默认 margin/padding/标记，行内边距由 .row 自行控制，去掉左侧缩进空白。
   c(`.${K.list}`, {
     display: 'flex',
@@ -193,32 +168,9 @@ const archiveStyle = c([
     alignItems: 'center',
     gap: '8px',
   }),
-  // 行内垃圾桶：官方 iconButton 规格（28px 圆角方形、hover 底色）。
-  c(`.${K.rowDelete}`, {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '28px',
-    height: '28px',
-    flex: 'none',
-    padding: 0,
-    border: 'none',
-    borderRadius: '6px',
-    background: 'none',
-    color: 'var(--dsw-alias-label-secondary)',
-    cursor: 'pointer',
-  }, [
-    c('&:hover', { background: 'var(--dsw-alias-interactive-bg-hover)' }),
-  ]),
   c(`.${K.unarchive}`, {
     color: 'var(--dsw-alias-label-primary)',
   }),
-  // 删除确认弹窗的「删除」按钮：危险色（浅红底 + 红字）。
-  c(`.${K.deleteBtn}`, {
-    background: 'var(--dsw-alias-interactive-bg-hover-danger, var(--dsw-alias-interactive-bg-hover))',
-    borderColor: 'var(--dsw-alias-state-error-primary, var(--dsw-alias-border-l2))',
-  }, [
-  ]),
   c(`.${K.empty}`, {
     padding: '32px 0',
     textAlign: 'center',

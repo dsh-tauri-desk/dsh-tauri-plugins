@@ -3,14 +3,14 @@
  * 工作区浏览器的「删除工作区 → 归档工作区」替换。
  *
  * 两块功能：
- *   - archive-page.tsx  注册进 settings.section（导航项「归档」，经官方设置侧边栏
+ *   - panel.tsx  注册进 settings.section（导航项「归档」，经官方设置侧边栏
  *     投影出导航行），渲染归档列表页（搜索 / 排序 / 分组 / 项目选择 / 取消归档）；
  *     数据源为宿主归档集合（官方「归档」与「归档工作区」共用同一份数据）。
  *   - workspace-patch.ts  DOM 补丁：把官方项目行「…」菜单里的「删除工作区」改写为
  *     「归档工作区」，点击改为归档该组全部会话（portal 菜单条目拦截）。
  *
  * 与 node half（src/index.ts）经 /api/dsh-session/* 通信（archived/archive/
- * archive-workspace/unarchive/clear）。
+ * archive-workspace/unarchive）。
  */
 import type { ClientContext } from 'dsh-tauri/client'
 import { compat } from 'dsh-tauri/client'
