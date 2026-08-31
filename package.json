@@ -50,6 +50,7 @@
     "bumpp": "catalog:cli",
     "dsh-tauri": "workspace:*",
     "dsh-tauri-tsdown": "workspace:*",
+    "dsh-tauri-utils": "workspace:*",
     "eslint": "catalog:cli",
     "lint-staged": "catalog:cli",
     "publint": "catalog:cli",

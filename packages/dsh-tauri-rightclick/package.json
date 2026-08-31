@@ -59,8 +59,6 @@
     "test": "vitest",
     "typecheck": "tsc"
   },
-  "dependencies": {
-    "dsh-tauri-utils": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {}
 }
