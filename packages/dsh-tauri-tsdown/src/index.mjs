@@ -1,13 +1,12 @@
-import type { UserConfig } from 'tsdown'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 
-function clientBundleRegistration(): Pick<UserConfig, 'banner' | 'footer'> {
+function clientBundleRegistration() {
   const packageName = process.env.npm_package_name
   const pkg = packageName
     ? { name: packageName }
-    : JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { name: string }
+    : JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'))
   const id = JSON.stringify(pkg.name)
   // Only the JS bundle is a runtime script wrapped in the ModuleLoader factory.
   // Declaration files must stay real ES modules (top-level import/export) —
@@ -34,20 +33,8 @@ export const dshExternal = [
   /^@deepseek-ai\//,
 ]
 
-interface DshConfig {
-  /**
-   * Package-level publint toggle (defaults to `true`). Turn it off for packages
-   * whose client bundle inlines CJS deps (e.g. css-render) that publint's static
-   * scan mistakes for `exports.__esModule + exports.default` — the assignment
-   * lives in a sealed module wrapper and never reaches the real module exports.
-   */
-  publint?: UserConfig['publint']
-  server?: UserConfig
-  client?: UserConfig
-}
-
-export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
-  const common: UserConfig = {
+export function defineDshConfig(options = {}) {
+  const common = {
     outDir: 'dist',
     format: 'esm',
     outExtensions: () => ({ js: '.js' }),
@@ -88,4 +75,3 @@ export function defineDshConfig(options: DshConfig = {}): UserConfig[] {
 }
 
 export { defineConfig } from 'tsdown'
-export type { UserConfig } from 'tsdown'
