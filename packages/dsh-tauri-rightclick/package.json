@@ -1,7 +1,7 @@
 {
   "name": "dsh-tauri-rightclick",
   "type": "module",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Native-style right-click context menus for DeepSeek Harness desktop wrappers (sessions, workspaces, conversation text, links, inputs).",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",

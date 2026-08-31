@@ -1,7 +1,7 @@
 {
   "name": "dsh-tauri-panel-extension",
   "type": "module",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Skills and MCP management in the DSH Tauri extension panel.",
   "author": "Hairyf <wwu710632@gmail.com>",
   "license": "MIT",
