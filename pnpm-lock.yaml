@@ -253,6 +253,8 @@ importers:
         specifier: workspace:*
         version: link:../dsh-tauri
 
+  packages/dsh-tauri-trust-mode: {}
+
   packages/dsh-tauri-tsdown:
     devDependencies:
       tsdown:
